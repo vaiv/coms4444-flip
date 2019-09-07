@@ -1,4 +1,4 @@
-# coms4444-flip
+# Project 1: Flip
 Course: COMS 4444 Programming and Problem Solving (F2019)  
 Uni: Columbia University  
 Instructor: Prof. Kenneth Ross   
