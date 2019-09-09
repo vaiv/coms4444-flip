@@ -75,7 +75,7 @@ public class Simulator
 	 public static void main(String[] args) throws ClassNotFoundException, InstantiationException, IllegalAccessException, IOException
 	 {
 	 	parseArgs(args);
-        Log.log("Project: Flip. \n Simulator Version:" + version);
+       
         Log.log("parsing done");
 	 	List<Pair<String, String>> pairs = new ArrayList<Pair<String, String>>();
 	 	HashMap<String, Pair<Integer, Integer>> player_wins = new HashMap<String, Pair<Integer, Integer>>();
@@ -497,6 +497,7 @@ public class Simulator
             }
         }
 
+        Log.log("Project: Flip. \n Simulator Version:" + version);
         Log.log("Players: " + playerNames.toString());
         Log.log("GUI " + (gui ? "enabled" : "disabled"));
 
