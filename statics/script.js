@@ -53,12 +53,12 @@ function process(data) {
     
     drawBorder(ctx);
     drawPieces(ctx, player1_pieces, "red");
-    drawPieces(ctx, player2_pieces, "gray");
+    drawPieces(ctx, player2_pieces, "blue");
     drawLine(ctx, 800, 0, 800, 400);
     drawLine(ctx, 400, 0, 400, 400);
     
     timeElement = document.getElementById('time');
-    timeElement.innerHTML = "<pre>" + "Remaining Turns: " + remaining_turns + "\tRound: " + curr_round + "<font color=\"red\">"+ "\n\n\nPlayer 1: " + "</font>" +  player1 + "<font color=\"gray\">"+"\tPlayer 2:" + "</font>" + player2  + "\nPlayer 1 score: " + player1_score + "\tPlayer 2 score: " + player2_score + "</pre>" ;
+    timeElement.innerHTML = "<pre>" + "Remaining Turns: " + remaining_turns + "\tRound: " + curr_round + "<font color=\"red\">"+ "\n\n\nPlayer 1: " + "</font>" +  player1 + "<font color=\"blue\">"+"\tPlayer 2:" + "</font>" + player2  + "\nPlayer 1 score: " + player1_score + "\tPlayer 2 score: " + player2_score + "</pre>" ;
 
     return refresh;
 }

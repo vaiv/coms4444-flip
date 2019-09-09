@@ -1,3 +1,14 @@
+/*
+    Project: Flip
+    Course: Programming & Problem Solving
+    Year : 2019
+    Instructor: Prof. Kenneth Ross
+    URL: http://www.cs.columbia.edu/~kar/4444f19/
+
+    Author: Vaibhav Darbari
+    Simulator Version: 1.0
+    
+*/
 package flip.sim;
 
 import java.util.ArrayList;

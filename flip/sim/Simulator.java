@@ -1,3 +1,14 @@
+/*
+    Project: Flip
+    Course: Programming & Problem Solving
+    Year : 2019
+    Instructor: Prof. Kenneth Ross
+    URL: http://www.cs.columbia.edu/~kar/4444f19/
+
+    Author: Vaibhav Darbari
+    Simulator Version: 1.0
+    
+*/
 package flip.sim;
 
 import java.awt.Desktop;
@@ -13,6 +24,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.Random;
 import java.util.PriorityQueue;
+import java.util.Scanner; 
 
 import javax.tools.JavaCompiler;
 import javax.tools.StandardJavaFileManager;
@@ -40,6 +52,7 @@ public class Simulator
 	private static Integer turns = 200;
 	private static boolean swap_players = false;
     private static long timeout = 1000;
+    private static String version = "1.0";
 
     // state variables for gui
 
@@ -62,6 +75,7 @@ public class Simulator
 	 public static void main(String[] args) throws ClassNotFoundException, InstantiationException, IllegalAccessException, IOException
 	 {
 	 	parseArgs(args);
+        Log.log("Project: Flip. \n Simulator Version:" + version);
         Log.log("parsing done");
 	 	List<Pair<String, String>> pairs = new ArrayList<Pair<String, String>>();
 	 	HashMap<String, Pair<Integer, Integer>> player_wins = new HashMap<String, Pair<Integer, Integer>>();
@@ -155,7 +169,7 @@ public class Simulator
             	Log.log("player 2 is" + player2.getName());
 
 
-            	Board game = new Board(n_pieces, seed);
+            	Board game = new Board(n_pieces, seed+round);
 
                 Log.log("Board setup complete.");
 
@@ -285,8 +299,6 @@ public class Simulator
                  }
 
             	swap_players = !swap_players;
-                player1 = null;
-                player2 = null;
 
                 Log.log("--------------------------------------------------------------------------------------------------------------");
         	}
@@ -306,11 +318,12 @@ public class Simulator
 
         Log.end();
 
-        // if (gui) 
-        //  {
-        //     gui(server, state(fps));
-        //     while(true);
-        //  }
+         if (gui) 
+          {
+             gui(server, state(fps));
+             Scanner in = new Scanner(System.in); 
+             String s = in.nextLine(); 
+          }
         System.exit(0);
 
 	 }
