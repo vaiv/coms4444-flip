@@ -1,6 +1,11 @@
 package flip.g6;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import flip.sim.Board;
 import flip.sim.Point;
@@ -31,7 +36,33 @@ public abstract class Move {
 	}
 	
 	public HashMap<Integer, Point> getClosestPointsToOpponentBoundary(int numPoints, HashMap<Integer, Point> player_pieces, boolean isPlayer1) {
-		return null;
+		HashMap<Integer, Point> closest_pieces = new HashMap<>();
+		HashMap<Integer, Point> sorted_pieces = new HashMap<>();
+		for(Integer key : player_pieces.keySet())
+			sorted_pieces.put(key, player_pieces.get(key));
+		Object[] sorted_pieces_array = sorted_pieces.entrySet().toArray();
+		if(isPlayer1) {
+			Arrays.sort(sorted_pieces_array, new Comparator() {
+			    public int compare(Object o1, Object o2) {
+			        return ((Double) (((Map.Entry<Integer, Point>) o1).getValue().x)).compareTo((Double) (((Map.Entry<Integer, Point>) o2).getValue().x));
+			    }
+			});			
+		}
+		else {
+			Arrays.sort(sorted_pieces_array, new Comparator() {
+			    public int compare(Object o1, Object o2) {
+			        return ((Double) (((Map.Entry<Integer, Point>) o2).getValue().x)).compareTo((Double) (((Map.Entry<Integer, Point>) o1).getValue().x));
+			    }
+			});
+			
+		}
+		List<Integer> ids = new ArrayList<>();
+		for (Object sorted_piece : sorted_pieces_array)
+			ids.add(((Map.Entry<Integer, Point>) sorted_piece).getKey());
+		for(int i = 0; i < numPoints; i++)
+			closest_pieces.put(ids.get(i), sorted_pieces.get(ids.get(i)));
+		
+		return closest_pieces;
 	}
 	
 	public Pair<Integer, Point> getClosestOpponent(Pair<Integer, Point> player_piece, HashMap<Integer, Point> opponent_pieces, boolean isPlayer1) {
