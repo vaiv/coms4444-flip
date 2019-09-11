@@ -35,9 +35,19 @@ public class ObstacleCreation extends Move {
 		
 //		System.out.println("In getMove of obstacle creation");
 		
-		Pair<Integer, Point> move = null; // TODO: Change this implementation
+			Pair<Integer, Point> move = null; // TODO: Change this implementation
+			
+			HashMap<Integer, Point> closest_pieces = getClosestPointsToOpponentBoundary(n / 2, player_pieces, isplayer1);
+			HashMap<Integer, Point> relevant_pieces = (HashMap<Integer, Point>) player_pieces.clone();
+			
+			for(Integer id : closest_pieces.keySet()) {
+				relevant_pieces.remove(id);
+			}
+			
 			Random random = new Random();
 			Integer piece_id = random.nextInt(n);
+			while(!relevant_pieces.containsKey(piece_id))
+				piece_id = random.nextInt(n);
 		 	Point curr_position = player_pieces.get(piece_id);
 		 	Point new_position = new Point(curr_position);
 		 	
