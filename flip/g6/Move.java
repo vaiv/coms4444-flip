@@ -37,7 +37,9 @@ public abstract class Move {
 	
 	public HashMap<Integer, Point> getClosestPointsToOpponentBoundary(int numPoints, HashMap<Integer, Point> player_pieces, boolean isPlayer1) {
 		HashMap<Integer, Point> closest_pieces = new HashMap<>();
-		HashMap<Integer, Point> sorted_pieces = (HashMap<Integer, Point>) player_pieces.clone();
+		HashMap<Integer, Point> sorted_pieces = new HashMap<>();
+		for(Integer key : player_pieces.keySet())
+			sorted_pieces.put(key, player_pieces.get(key));
 		Object[] sorted_pieces_array = sorted_pieces.entrySet().toArray();
 		if(isPlayer1) {
 			Arrays.sort(sorted_pieces_array, new Comparator() {
