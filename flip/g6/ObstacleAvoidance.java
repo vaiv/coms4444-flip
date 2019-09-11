@@ -21,7 +21,6 @@ public class ObstacleAvoidance extends Move {
 		this.diameter_piece = diameter_piece;
 	}
 
-	
 	@Override
 	public boolean isPossible() {
 		return true; // TODO: Change this implementation
