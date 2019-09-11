@@ -46,9 +46,9 @@ public class Player implements flip.sim.Player
 		for(int i = 0; i < num_moves; i++) {			
 			double randomValue = Math.random();
 			
-			Aggressive aggressive = new Aggressive(player_pieces, opponent_pieces, isplayer1);
-			ObstacleAvoidance obstacleAvoidance = new ObstacleAvoidance(player_pieces, opponent_pieces, isplayer1);
-			ObstacleCreation obstacleCreation = new ObstacleCreation(player_pieces, opponent_pieces, isplayer1);
+			Aggressive aggressive = new Aggressive(player_pieces, opponent_pieces, isplayer1, n, diameter_piece);
+			ObstacleAvoidance obstacleAvoidance = new ObstacleAvoidance(player_pieces, opponent_pieces, isplayer1, n, diameter_piece);
+			ObstacleCreation obstacleCreation = new ObstacleCreation(player_pieces, opponent_pieces, isplayer1, n, diameter_piece);
 			
 			if(i == 0) {
 				if(randomValue <= THRESHOLD) {
@@ -102,56 +102,7 @@ public class Player implements flip.sim.Player
 					 */
 				}
 			}
-		}
-		
-		
-		
-//		List<Pair<Integer, Point>> moves = new ArrayList<Pair<Integer, Point>>();
-//
-//		int num_trials = 30;
-//		int i = 0;
-//
-//		while(moves.size() != num_moves && i < num_trials) {
-//			Integer piece_id = random.nextInt(n);
-//			Point curr_position = player_pieces.get(piece_id);
-//			Point new_position = new Point(curr_position);
-//
-//			double theta = 0;
-//			double delta_x = diameter_piece * Math.cos(theta);
-//			double delta_y = diameter_piece * Math.sin(theta);
-//
-//			Double val = (Math.pow(delta_x, 2) + Math.pow(delta_y, 2));
-//
-//			new_position.x = isplayer1 ? new_position.x - delta_x : new_position.x + delta_x;
-//			new_position.y += delta_y;
-//			Pair<Integer, Point> move = new Pair<Integer, Point>(piece_id, new_position);
-//
-//			Double dist = Board.getdist(player_pieces.get(move.getKey()), move.getValue());
-//
-//			if(check_validity(move, player_pieces, opponent_pieces))
-//				moves.add(move);
-//			i++;
-//		}
-//
+		}			
 		return moves;
 	}
-//
-//	public boolean check_validity(Pair<Integer, Point> move, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces)
-//	{
-//		boolean valid = true;
-//
-//		// check if move is adjacent to previous position.
-//		if(!Board.almostEqual(Board.getdist(player_pieces.get(move.getKey()), move.getValue()), diameter_piece))
-//		{
-//			return false;
-//		}
-//		// check for collisions
-//		valid = valid && !Board.check_collision(player_pieces, move);
-//		valid = valid && !Board.check_collision(opponent_pieces, move);
-//
-//		// check within bounds
-//		valid = valid && Board.check_within_bounds(move);
-//		return valid;
-//
-//	}	
 }
