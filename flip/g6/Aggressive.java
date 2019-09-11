@@ -31,18 +31,20 @@ public class Aggressive extends Move {
 	@Override
 	public Pair<Integer, Point> getMove() {
 		Pair<Integer, Point> move = null; // TODO: Change this implementation
-		
-		HashMap<Integer, Point> closest_pieces = getClosestPointsToOpponentBoundary(n / 2, player_pieces, isplayer1);
+
+		HashMap<Integer, Point> unfinished_pieces = getUnfinishedPlayerPieces(player_pieces, isplayer1);
+		HashMap<Integer, Point> closest_pieces = getClosestPointsToOpponentBoundary(n / 2, unfinished_pieces, isplayer1);
 
 		Random random = new Random();
 		Integer piece_id = random.nextInt(n);
+
 		while(!closest_pieces.containsKey(piece_id))
 			piece_id = random.nextInt(n);
+
 		Point curr_position = player_pieces.get(piece_id);
 	 	Point new_position = new Point(curr_position);
-
-//		double theta = (-Math.PI/2 + Math.PI * random.nextDouble());
-	 	double theta = 0;
+		
+		double theta = 0;
 	 	double delta_x = diameter_piece * Math.cos(theta);
 	 	double delta_y = diameter_piece * Math.sin(theta);
 
@@ -56,10 +58,11 @@ public class Aggressive extends Move {
 
 	 	Double dist = Board.getdist(player_pieces.get(move.getKey()), move.getValue());
 
-	 	if(checkValidity(move, player_pieces, opponent_pieces, dist))
+	 	if(checkValidity(move, player_pieces, opponent_pieces, diameter_piece))
 	 		return move;
 	 	
-	 	return getMove();
+		return new ObstacleCreation(player_pieces, opponent_pieces, isplayer1, n, diameter_piece).getMove();
+
 	}
 	
 	@Override
