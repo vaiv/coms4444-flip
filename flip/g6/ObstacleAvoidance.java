@@ -23,7 +23,7 @@ public class ObstacleAvoidance extends Move {
 
 	@Override
 	public boolean isPossible() {
-		return true; // TODO: Change this implementation
+		return false; // TODO: Change this implementation
 	}
 	
 	@Override
