@@ -41,16 +41,10 @@ public class Player implements flip.sim.Player
 		for(int pieceId : pieces.keySet() ) {
 			System.out.println(pieceId);
 			if( pieceId < n / 2) {
-				try{
-					System.out.println("Yo");
 					this.offensePieces.add(pieceId);
-				}
-				catch(Exception e){
-					System.out.println(e);
-				}
 			}
 			else {
-
+					this.defensePieces.add(pieceId);
 			}
 		}
 	}
@@ -60,7 +54,6 @@ public class Player implements flip.sim.Player
 
 		if( (new Random()).nextInt(100) > 50 ) {
 			// RETURN OFFENSIVE STRATEGY
-			System.out.println("hello");
 			return getOffensiveMoves(num_moves, player_pieces, opponent_pieces, isplayer1);
 		}
 		else {
