@@ -29,4 +29,12 @@ public abstract class Move {
 		return valid;
 
 	}
+	
+	public HashMap<Integer, Point> getClosestPointsToOpponentBoundary(int numPoints, HashMap<Integer, Point> player_pieces, boolean isPlayer1) {
+		return null;
+	}
+	
+	public Pair<Integer, Point> getClosestOpponent(Pair<Integer, Point> player_piece, HashMap<Integer, Point> opponent_pieces, boolean isPlayer1) {
+		return null;
+	}
 }
