@@ -2,3 +2,6 @@
 /Aggressive.class
 /CollisionAvoidance.class
 /CollisionDetection.class
+/ObstacleAvoidance.class
+/ObstacleCreation.class
+/Move.class
