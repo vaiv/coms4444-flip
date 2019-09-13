@@ -78,7 +78,7 @@ public class Player implements flip.sim.Player
 	}
 
 	// Find a valid move that moves a coin closer to destination
-	// TODO: more advanced path finding
+	// TODO: more advanced path finding algorithm
 	public Point next_move(Point start, Point dest) {
 		double length = this.diameter_piece;
 		double y_diff = dest.y - start.y;
