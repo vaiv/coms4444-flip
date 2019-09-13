@@ -1,6 +1,7 @@
 package flip.wall;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
@@ -19,6 +20,9 @@ public class Player implements flip.sim.Player
 	private boolean isplayer1;
 	private Integer n;
 	private Double diameter_piece;
+
+	// temporary variable to store current target position of each piece
+	private HashMap<Integer, Point> piece_to_dest = new HashMap<Integer, Point>();
 
 	public Player()
 	{
@@ -43,33 +47,61 @@ public class Player implements flip.sim.Player
 		int num_trials = 30;
 		int i = 0;
 
-		while(moves.size()!= num_moves && i<num_trials)
-		{
-		 	Integer piece_id = random.nextInt(n);
-		 	Point curr_position = player_pieces.get(piece_id);
-			Point new_position = new Point(curr_position);
-			
-
-			
-			Point temp = next_move(curr_position, new Point(0, 0));
-
-		 	Pair<Integer, Point> move = new Pair<Integer, Point>(piece_id, temp);
-
-		 	Double dist = Board.getdist(player_pieces.get(move.getKey()), move.getValue());
-		 	// System.out.println("distance from previous position is " + dist.toString());
-		 	// Log.record("distance from previous position is " + dist.toString());
-
-		 	if(check_validity(move, player_pieces, opponent_pieces))
-		 		moves.add(move);
-		 	i++;
+		// Set current wall buidling objective
+		ArrayList<Point> wall = wall_points(isplayer1 ? 18.0 : -18.0, 0);
+		for (Point point : wall) {
+			Integer id = closest(point, player_pieces);
+			piece_to_dest.put(id, point);
 		}
-		 
+
+		for (Integer id : piece_to_dest.keySet()) {
+			if (moves.size() >= num_moves || i >= num_trials) 
+				break;
+			Point dest = piece_to_dest.get(id);
+			Point temp = find_move(player_pieces.get(id), dest);
+			Pair<Integer, Point> move = new Pair<Integer, Point>(id, temp);
+			if(check_validity(move, player_pieces, opponent_pieces))
+				moves.add(move);
+			++i;	 
+		}
+
 		return moves;
+
+		// while(moves.size()!= num_moves && i<num_trials)
+		// {
+		//  	Integer piece_id = random.nextInt(n);
+		//  	Point curr_position = player_pieces.get(piece_id);
+		// 	Point new_position = new Point(curr_position);
+			
+
+			
+		// 	Point temp = find_move(curr_position, new Point(0, 0));
+
+		//  	Pair<Integer, Point> move = new Pair<Integer, Point>(piece_id, temp);
+
+		//  	Double dist = Board.getdist(player_pieces.get(move.getKey()), move.getValue());
+		//  	// System.out.println("distance from previous position is " + dist.toString());
+		//  	// Log.record("distance from previous position is " + dist.toString());
+
+		//  	if(check_validity(move, player_pieces, opponent_pieces))
+		//  		moves.add(move);
+		//  	i++;
+		// }
+		 
+		// return moves;
+	}
+
+	// Find the distance between two points
+	public double distance(Point x, Point y) {
+		double y_diff = x.y - y.y;
+		double x_diff = x.x - y.x;
+		double dist = Math.sqrt(Math.pow(x_diff, 2) + Math.pow(y_diff, 2));
+		return dist;
 	}
 
 	// Find a valid move that moves a coin closer to destination
 	// TODO: more advanced path finding algorithm
-	public Point next_move(Point start, Point dest) {
+	public Point find_move(Point start, Point dest) {
 		double length = this.diameter_piece;
 		double y_diff = dest.y - start.y;
 		double x_diff = dest.x - start.x;
@@ -82,7 +114,23 @@ public class Player implements flip.sim.Player
 		return new Point(newX, newY);
 	}
 
-	// Find a list of points at x axis that can form a wall
+	// Find the id of a coin that's closest to a point
+	public Integer closest(Point point, HashMap<Integer, Point> pieces) {
+		double min_distance = Double.MAX_VALUE;
+		Integer result_id = 0;
+		for (int i = 0; i < n; ++i) {
+			Integer id = i;
+			Point p = pieces.get(id);
+			double distance = Math.sqrt(Math.pow(point.x - p.x, 2) + Math.pow(point.y - p.y, 2));
+			if (distance < min_distance) {
+				min_distance = distance;
+				result_id = id;
+			}
+		}
+		return result_id;
+	}
+
+	// Find a list of points at x axis that can form a vertical wall
 	// spacing is the space between each coin
 	public ArrayList<Point> wall_points(double x, double spacing) {
 		ArrayList<Point> result = new ArrayList<Point>();
@@ -94,11 +142,6 @@ public class Player implements flip.sim.Player
 			result.add(new Point(x, curr_y));
 		}
 		return result;
-	}
-
-	// Find the index of a coin that's closest to a point
-	public Integer closest(Point point, HashMap<Integer, Point> pieces) {
-		return 0;
 	}
 
 	public boolean check_validity(Pair<Integer, Point> move, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces)
