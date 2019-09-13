@@ -56,9 +56,6 @@ public class Player implements flip.sim.Player
 
 			}
 		}
-		System.out.println("defense offense sizes");
-		System.out.println(this.defensePieces.size());
-		System.out.println(this.offensePieces.size());
 	}
 
 	public List<Pair<Integer, Point>> getMoves(Integer num_moves, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, boolean isplayer1)
@@ -124,6 +121,10 @@ public class Player implements flip.sim.Player
 		 }
 
 		 return moves;
+	}
+
+	public double calculateDistance(double x1, double y1, double x2, double y2){
+		return Math.sqrt((y2 - y1) * (y2 - y1) + (x2 - x1) * (x2 - x1));
 	}
 
 	public boolean check_validity(Pair<Integer, Point> move, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces)
