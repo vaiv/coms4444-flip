@@ -59,8 +59,11 @@ public class Player implements flip.sim.Player
 		 	// Log.record("delta_x^2 + delta_y^2 = " + val.toString() + " theta values are " +  Math.cos(theta) + " " +  Math.sin(theta) + " diameter is " + diameter_piece);
 
 		 	new_position.x = isplayer1 ? new_position.x - delta_x : new_position.x + delta_x;
-		 	new_position.y += delta_y;
-		 	Pair<Integer, Point> move = new Pair<Integer, Point>(piece_id, new_position);
+			new_position.y += delta_y; 
+
+			Point temp = next_move(curr_position, new Point(0, 0));
+
+		 	Pair<Integer, Point> move = new Pair<Integer, Point>(piece_id, temp);
 
 		 	Double dist = Board.getdist(player_pieces.get(move.getKey()), move.getValue());
 		 	// System.out.println("distance from previous position is " + dist.toString());
@@ -72,6 +75,21 @@ public class Player implements flip.sim.Player
 		 }
 		 
 		 return moves;
+	}
+
+	// Find a valid move that moves a coin closer to destination
+	// TODO: more advanced path finding
+	public Point next_move(Point start, Point dest) {
+		double length = this.diameter_piece;
+		double y_diff = dest.y - start.y;
+		double x_diff = dest.x - start.x;
+		if (Math.sqrt(Math.pow(x_diff, 2) + Math.pow(y_diff, 2)) <= length) {
+			return new Point(dest);
+		}
+		double ratio = length / Math.sqrt(Math.pow(x_diff, 2) + Math.pow(y_diff, 2));
+		double newX = start.x + x_diff * ratio;
+		double newY = start.y + y_diff * ratio;
+		return new Point(newX, newY);
 	}
 
 	public boolean check_validity(Pair<Integer, Point> move, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces)
