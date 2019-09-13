@@ -1,4 +1,4 @@
-package flip.beginner;
+package flip.g9greedy;
 import java.util.List;
 import java.util.Collections;
 import java.util.List;
@@ -43,7 +43,6 @@ public class Player implements flip.sim.Player
 		List<Pair<Integer, Point>> moves = new ArrayList<Pair<Integer, Point>>();
 		List<Pair<Integer, Point>> possible_moves = new ArrayList<Pair<Integer, Point>>();
 
-		int num_trials = 30;
 		//my code here
 		for (int i = 0; i < n; i++) {
 			Point curr_position = player_pieces.get(i);
@@ -53,8 +52,13 @@ public class Player implements flip.sim.Player
 			// Want delta x > 0
 			Pair<Integer, Point> move = new Pair<Integer, Point>(i, new_position);
 			if(check_validity(move, player_pieces, opponent_pieces)) {
-				System.out.println("IDEAL");
-				possible_moves.add(move);
+				//System.out.println("IDEAL: " + move.getValue().x);
+				if(isplayer1) {
+					if(move.getValue().x < -30) continue;
+				} else {
+					if(move.getValue().x > 30) continue;
+				}
+				moves.add(move);
 				continue;
 			}
 			double theta = 0.1;
@@ -70,7 +74,7 @@ public class Player implements flip.sim.Player
 				new_position.y += delta_y1;
 				move = new Pair<Integer, Point>(i, new_position);
 				if(check_validity(move,	player_pieces, opponent_pieces)) {
-					System.out.println("VALID");
+					//System.out.println("VALID");
 					break;
 				}
 				//check same move reflected over x axis
@@ -82,24 +86,55 @@ public class Player implements flip.sim.Player
 				new_position.y += delta_y2;
 				move = new Pair<Integer, Point>(i, new_position);
 				if(check_validity(move,	player_pieces, opponent_pieces)) {
-					System.out.println("VALID");
+					//System.out.println("VALID");
 					break;
 				}
 				theta += .1;
 			} while (theta < Math.PI / 2 - .05); //slightly under 90 degree angle
 
 		 	if(check_validity(move, player_pieces, opponent_pieces)) {
+		 		if(isplayer1) {
+					if(move.getValue().x < -30) continue;
+				} else {
+					if(move.getValue().x > 30) continue;
+				}
 				possible_moves.add(move);
 			}
 		 }
+		 if(moves.size() >= 2)
+		 	return pick_i_moves(num_moves, moves, isplayer1); 
 
-		System.out.println("POSSIBLE MOVES: " + possible_moves.size());
-		return pick_moves(num_moves, possible_moves, isplayer1);
+		//System.out.println("POSSIBLE MOVES: " + possible_moves.size());
+		return pick_moves(num_moves, possible_moves, moves, isplayer1);
 	}
 
-	public List<Pair<Integer, Point>> pick_moves(Integer num_moves, List<Pair<Integer, Point>> possible_moves, boolean isplayer1) {
+	public List<Pair<Integer, Point>> pick_i_moves(Integer num_moves, List<Pair<Integer, Point>> possible_moves, boolean isplayer1) {
 		List<Pair<Integer, Point>> moves = new ArrayList<Pair<Integer, Point>>();
+
 		for(int i = 0; i<num_moves; i++) {
+			if(possible_moves.isEmpty()) {
+				return moves;
+			}
+			Pair<Integer, Point> best_move = possible_moves.get(0);
+			for(int j = 1; j<possible_moves.size(); j++) {
+				if(isBetterThan(best_move, possible_moves.get(j), isplayer1)) {
+					best_move = possible_moves.get(j);
+				}
+			}
+			moves.add(best_move);
+			possible_moves.remove(best_move);
+		}
+		/*for(int i = 0; i < num_moves; i++) {
+			System.out.println(moves.get(i).getValue().x);
+		}*/
+		return moves;
+	}
+
+	public List<Pair<Integer, Point>> pick_moves(Integer num_moves, List<Pair<Integer, Point>> possible_moves, List<Pair<Integer, Point>> i_moves, boolean isplayer1) {
+		List<Pair<Integer, Point>> moves = new ArrayList<Pair<Integer, Point>>();
+		moves.addAll(i_moves);
+
+		for(int i = 0; i<num_moves-moves.size(); i++) {
 			if(possible_moves.isEmpty()) {
 				return moves;
 			}
@@ -117,9 +152,9 @@ public class Player implements flip.sim.Player
 
 	private boolean isBetterThan(Pair<Integer, Point> current_move, Pair<Integer, Point> new_move, boolean isplayer1) {
 		if(isplayer1) {
-			return current_move.getValue().x < new_move.getValue().x;
-		} else {
 			return current_move.getValue().x > new_move.getValue().x;
+		} else {
+			return current_move.getValue().x < new_move.getValue().x;
 		}
 	}
 

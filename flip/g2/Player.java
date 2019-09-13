@@ -1,4 +1,4 @@
-package flip.ghj;
+package flip.g2;
 
 import java.util.List;
 import java.util.Random;
