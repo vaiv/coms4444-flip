@@ -123,6 +123,23 @@ public class Player implements flip.sim.Player
 		 return moves;
 	}
 
+	// return the next piece to move to build a Wall
+	public int getNextWallPiece(HashMap<Integer, Point> player_pieces){
+		//arraylist of points as wall coordinates
+		Point pos = wall.get(0);
+		double minDist = Double.POSITIVE_INFINITY;
+		double minPiece = -1;
+		for(Integer id : wallPieces){
+			Point piece = player_pieces.get(id);
+			double dist = calculateDistance(pos.x, pos.y, piece.x, piece.y);
+			if(dist < minDist){
+				minDist = dist;
+				minPiece = id;
+			}
+		}
+		return minPiece;
+	}
+
 	public double calculateDistance(double x1, double y1, double x2, double y2){
 		return Math.sqrt((y2 - y1) * (y2 - y1) + (x2 - x1) * (x2 - x1));
 	}

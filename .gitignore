@@ -31,3 +31,4 @@ w4444.iml
 
 # ignore changes to Makefile
 Makefile
+*.class
