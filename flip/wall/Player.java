@@ -92,6 +92,21 @@ public class Player implements flip.sim.Player
 		return new Point(newX, newY);
 	}
 
+	// Find a list of points at x axis that can form a wall
+
+	// spacing is the space between each coin
+	public ArrayList<Point> wall_points(double x, double spacing) {
+		ArrayList<Point> result = new ArrayList<Point>();
+		double d = this.diameter_piece;
+		double y_max = 20.0;
+		double y_min = -20.0;
+		double curr_y = y_min + d / 2;
+		for (;curr_y + d <= y_max; curr_y += d + spacing) {
+			result.add(new Point(x, curr_y));
+		}
+		return result;
+	}
+
 	public boolean check_validity(Pair<Integer, Point> move, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces)
     {
         boolean valid = true;
