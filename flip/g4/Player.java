@@ -1,4 +1,4 @@
-package flip.ourplayer;
+package flip.g4;
 import java.util.List;
 import java.util.Collections;
 import java.util.List;
@@ -36,16 +36,12 @@ public class Player implements flip.sim.Player
 		this.diameter_piece = diameter_piece;
 	}
 
-	public Boolean farEnough(HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, Integer piece_id){
-		Point curr_position = player_pieces.get(piece_id);
-		// TODO: weight number of pieces accross & factor in blocking 
-		// do not hard code 40 
-		if (curr_position.x > 40){
+	public boolean inEndZone(double x, boolean isplayer1) {
+		if((!isplayer1 && x > 20 + 1.75 * diameter_piece + ((n / 9) * (diameter_piece / 2))) || (isplayer1 && x < -20 - 1.75 * diameter_piece - ((n / 9) * (diameter_piece / 2)))) {
 			return true;
 		}
-		return false; 
+		return false;
 	}
-
 
 	public List<Pair<Integer, Point>> getMoves(Integer num_moves, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, boolean isplayer1)
 	{
@@ -56,34 +52,35 @@ public class Player implements flip.sim.Player
 
 		 while(moves.size()!= num_moves && i<num_trials)
 		 {
-			// TODO: choose piece not randomly 
-			Integer piece_id = random.nextInt(n);
-			while(farEnough(player_pieces, opponent_pieces, piece_id)){
-				piece_id = random.nextInt(n);
-			}			
-			Point curr_position = player_pieces.get(piece_id);
-			Point new_position = new Point(curr_position);
-			double theta = 0;
-			Pair<Integer, Point> move = new Pair<Integer, Point>(piece_id,curr_position);
-			do {
-				// TODO: want to change theta if blocked 
-				double delta_x = diameter_piece * Math.cos(theta);
-				double delta_y = diameter_piece * Math.sin(theta);
+		 	Integer piece_id = random.nextInt(n);
+		 	Point curr_position = player_pieces.get(piece_id);
+		 	if(inEndZone(curr_position.x, isplayer1)) {
+		 		i++;
+		 		continue;
+		 	}
+		 	Point new_position = new Point(curr_position);
 
-				Double val = (Math.pow(delta_x,2) + Math.pow(delta_y, 2));
+		 	double theta = -Math.PI/2 + Math.PI * random.nextDouble();
+		 	if((isplayer1 && curr_position.x > 20 )|| (!isplayer1 && curr_position.x < -20)) {
+		 		theta = 0;
+		 	}
+		 	double delta_x = diameter_piece * Math.cos(theta);
+		 	double delta_y = diameter_piece * Math.sin(theta);
 
-				new_position.x = isplayer1 ? new_position.x - delta_x : new_position.x + delta_x;
-				new_position.y += delta_y;
-				move = new Pair<Integer, Point>(piece_id, new_position);
-				
-				Double dist = Board.getdist(player_pieces.get(move.getKey()), move.getValue());
-				// theta = theta > 0 ? theta+Math.PI/2 : theta-Math.PI/2;
-				theta = -Math.PI/2 + Math.PI*random.nextDouble();
-			
-			} while(Board.check_collision(player_pieces, move) || Board.check_collision(opponent_pieces, move));
-		 	if(check_validity(move, player_pieces, opponent_pieces)){
-				moves.add(move);
-			}
+		 	Double val = (Math.pow(delta_x,2) + Math.pow(delta_y, 2));
+		 	// System.out.println("delta_x^2 + delta_y^2 = " + val.toString() + " theta values are " +  Math.cos(theta) + " " +  Math.sin(theta) + " diameter is " + diameter_piece);
+		 	// Log.record("delta_x^2 + delta_y^2 = " + val.toString() + " theta values are " +  Math.cos(theta) + " " +  Math.sin(theta) + " diameter is " + diameter_piece);
+
+		 	new_position.x = isplayer1 ? new_position.x - delta_x : new_position.x + delta_x;
+		 	new_position.y += delta_y;
+		 	Pair<Integer, Point> move = new Pair<Integer, Point>(piece_id, new_position);
+
+		 	Double dist = Board.getdist(player_pieces.get(move.getKey()), move.getValue());
+		 	// System.out.println("distance from previous position is " + dist.toString());
+		 	// Log.record("distance from previous position is " + dist.toString());
+
+		 	if(check_validity(move, player_pieces, opponent_pieces))
+		 		moves.add(move);
 		 	i++;
 		 }
 		 
