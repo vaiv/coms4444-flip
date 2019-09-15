@@ -1,12 +1,9 @@
 package flip.density;
+import java.util.*;
 import java.util.List;
-import java.util.Collections;
-import java.util.List;
-import java.util.Random;
-import java.util.HashMap;
-import javafx.util.Pair; 
-import java.util.ArrayList;
 
+import javafx.util.Pair;
+import java.util.TreeMap;
 import flip.sim.Point;
 import flip.sim.Board;
 import flip.sim.Log;
@@ -19,7 +16,9 @@ public class Player implements flip.sim.Player
 	private Integer n;
 	private Double diameter_piece;
 	private Double distance = 5.0;
-	private Integer threadfold = 30;
+	private Integer threshold = 21;
+	private Integer boundary = 20;
+	private Integer height_to_count_players = 2;
 
 
 	public Player()
@@ -43,18 +42,29 @@ public class Player implements flip.sim.Player
 		int sign = isplayer1 ? -1 : 1;
 		List<Pair<Integer, Point>> moves = new ArrayList<Pair<Integer, Point>>();
 		int low1 = Integer.MAX_VALUE, low2 = Integer.MAX_VALUE, low1Id = -1, low2Id = -1;
-		for (int i = 0; i < n; i++) {
+		for (int i = 0; i < n; i++) {  
+			int count_behind_players = 0;
 			Point curr_position = player_pieces.get(i);
+			//count the number of nodes incoming
+			for (Point point : player_pieces.values()) {
+				double y = point.y;
+				double x = point.x;
+				if (y > curr_position.y - height_to_count_players && y < curr_position.y + height_to_count_players
+				&& ((isplayer1 && x > curr_position.x) || (!isplayer1 && x < curr_position.x)) ) 
+					count_behind_players++;
+			}
 			Pair<Integer, Point> move = new Pair<Integer, Point>(i, new Point(curr_position.x + sign*2, curr_position.y));
-			if(((isplayer1 && curr_position.x < -threadfold)
-				|| (!isplayer1 && curr_position.x > threadfold)) || !check_validity(move, player_pieces, opponent_pieces)) continue;
-			int count = 0;
+			//Choose 2.5 not 2 to allow some intersection that stops the coin moving into the stop area.
+			if(((isplayer1 && curr_position.x < -threshold - count_behind_players*2.5)
+				|| (!isplayer1 && curr_position.x > threshold + count_behind_players*2.5)) ||
+					!check_validity(move, player_pieces, opponent_pieces)) continue;
+			int count = 0; 
 			for (Point point : opponent_pieces.values()) {
 				double y = point.y;
 				if (y > curr_position.y - distance && y < curr_position.y + distance) 
 					count++;
 			}
-			if (low1 > count) {
+			if (low1 > count) {        
 				low2 = low1;	
 				low2Id = low1Id;
 				low1 = count;
@@ -69,14 +79,16 @@ public class Player implements flip.sim.Player
 			Point point1 = player_pieces.get(low1Id);
 			Pair<Integer, Point> move1 = new Pair<Integer, Point>(low1Id, new Point(point1.x + sign*2, point1.y));
 			moves.add(move1);
-			Pair<Integer, Point> move2 = new Pair<Integer, Point>(low1Id, new Point(point1.x + sign*4, point1.y));
-			if(check_validity(move2, player_pieces, opponent_pieces)) 
+			Pair<Integer, Point> move2 = new Pair<Integer, Point>(low1Id, new Point(point1.x + sign * 4, point1.y));
+			//We should check if the current node has got into the stop area, if so, do movement for the other nodes.
+			if (check_validity(move2, player_pieces, opponent_pieces) 
+				&& ((isplayer1 && point1.x + sign*2 > -threshold) || (!isplayer1 && point1.x + sign*2 < threshold)))
 				moves.add(move2);
-			else if (low2Id != -1){
+			else if (low2Id != -1) {
 				Point point2 = player_pieces.get(low2Id);
-				Pair<Integer, Point> move3 = new Pair<Integer, Point>(low2Id, new Point(point2.x + sign*2, point2.y));
+				Pair<Integer, Point> move3 = new Pair<Integer, Point>(low2Id, new Point(point2.x + sign * 2, point2.y));
 				moves.add(move3);
-			}	
+			}
 		}
 		
 		int num_trials = 30;
@@ -88,8 +100,8 @@ public class Player implements flip.sim.Player
 		 	Integer piece_id = random.nextInt(n);
 			
 		 	Point curr_position = player_pieces.get(piece_id);
-			if(((isplayer1 && curr_position.x < -threadfold)
-				|| (!isplayer1 && curr_position.x > threadfold))) continue;
+			if(((isplayer1 && curr_position.x < -threshold)
+				|| (!isplayer1 && curr_position.x > threshold))) continue;
 			Point new_position = new Point(curr_position);
 		 	double theta = -Math.PI/2 + Math.PI * random.nextDouble();
 		 	double delta_x = diameter_piece * Math.cos(theta);
@@ -130,7 +142,7 @@ public class Player implements flip.sim.Player
         // check within bounds
         valid = valid && Board.check_within_bounds(move);
         return valid;
-
     }
+
 }
 
