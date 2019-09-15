@@ -40,7 +40,10 @@ public class Player implements flip.sim.Player
 		Point curr_position = player_pieces.get(piece_id);
 		// TODO: weight number of pieces accross & factor in blocking 
 		// do not hard code 40 
-		if (curr_position.x > 40){
+		// factor in pieces behind you 
+
+		boolean over_edge = isplayer1 ?  curr_position.x < -40 : curr_position.x > 40 ;
+		if (over_edge){
 			return true;
 		}
 		return false; 
@@ -62,14 +65,22 @@ public class Player implements flip.sim.Player
 				piece_id = random.nextInt(n);
 			}			
 			Point curr_position = player_pieces.get(piece_id);
-			Point new_position = new Point(curr_position);
+			
 			double theta = 0;
 			Pair<Integer, Point> move = new Pair<Integer, Point>(piece_id,curr_position);
+			int tries = 0; 
+			boolean backwards = false; 
 			do {
-				// TODO: want to change theta if blocked 
+				// TODO: time out -- pick a diff piece i guess or back up 
+				if (tries++ > 100) {
+					backwards = true; 
+				} 
+				if (tries > 200){
+					break; 
+				}
+				Point new_position = new Point(curr_position);
 				double delta_x = diameter_piece * Math.cos(theta);
 				double delta_y = diameter_piece * Math.sin(theta);
-
 				Double val = (Math.pow(delta_x,2) + Math.pow(delta_y, 2));
 
 				new_position.x = isplayer1 ? new_position.x - delta_x : new_position.x + delta_x;
@@ -77,14 +88,14 @@ public class Player implements flip.sim.Player
 				move = new Pair<Integer, Point>(piece_id, new_position);
 				
 				Double dist = Board.getdist(player_pieces.get(move.getKey()), move.getValue());
-				// theta = theta > 0 ? theta+Math.PI/2 : theta-Math.PI/2;
-				theta = -Math.PI/2 + Math.PI*random.nextDouble();
+				theta = theta < Math.PI/1.5 || backwards ? theta+Math.PI/8 : theta-Math.PI/8;
+				//theta = -Math.PI/2 + Math.PI*random.nextDouble();
 			
-			} while(Board.check_collision(player_pieces, move) || Board.check_collision(opponent_pieces, move));
+			} while(!check_validity(move, player_pieces, opponent_pieces));
 		 	if(check_validity(move, player_pieces, opponent_pieces)){
 				moves.add(move);
 			}
-		 	i++;
+			i++;
 		 }
 		 
 		 return moves;
@@ -97,6 +108,7 @@ public class Player implements flip.sim.Player
         // check if move is adjacent to previous position.
         if(!Board.almostEqual(Board.getdist(player_pieces.get(move.getKey()), move.getValue()), diameter_piece))
             {
+				System.out.println("this is the problem");
                 return false;
             }
         // check for collisions
