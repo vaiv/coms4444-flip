@@ -21,8 +21,11 @@ public class Player implements flip.sim.Player
 	private Integer n;
 	private Double diameter_piece;
 
+	private boolean wall_init = false;
 	// temporary variable to store current target position of each piece
 	private HashMap<Integer, Point> piece_to_dest = new HashMap<Integer, Point>();
+	// points selected to be the wall
+	private HashMap<Integer, Point> wall_point = new HashMap<Integer, Point>();
 
 	public Player()
 	{
@@ -48,10 +51,14 @@ public class Player implements flip.sim.Player
 		int i = 0;
 
 		// Set current wall buidling objective
-		ArrayList<Point> wall = wall_points(isplayer1 ? 18.0 : -18.0, 0);
-		for (Point point : wall) {
-			Integer id = closest(point, player_pieces);
-			piece_to_dest.put(id, point);
+		if (!wall_init) {
+			ArrayList<Point> wall = wall_points(isplayer1 ? 18.0 : -18.0, 1.0); // positions for wall
+			for (Point point : wall) {
+				Integer id = closest(point, player_pieces, wall_point);
+				piece_to_dest.put(id, point);
+				wall_point.put(id, point);
+			}
+			wall_init = true;
 		}
 
 		for (Integer id : piece_to_dest.keySet()) {
@@ -114,22 +121,24 @@ public class Player implements flip.sim.Player
 		return new Point(newX, newY);
 	}
 
-	// Find the id of a coin that's closest to a point
-	public Integer closest(Point point, HashMap<Integer, Point> pieces) {
+	// Find the id of a coin that's closest to a point, ignoring some
+	public Integer closest(Point point, HashMap<Integer, Point> pieces, HashMap<Integer, Point> ignore) {
 		double min_distance = Double.MAX_VALUE;
 		Integer result_id = 0;
 		for (int i = 0; i < n; ++i) {
+			if (ignore != null && ignore.containsKey(i)) 
+				continue;
 			Integer id = i;
 			Point p = pieces.get(id);
 			double distance = Math.sqrt(Math.pow(point.x - p.x, 2) + Math.pow(point.y - p.y, 2));
 			if (distance < min_distance) {
 				min_distance = distance;
 				result_id = id;
-			}
+			} 
 		}
 		return result_id;
 	}
-
+	
 	// Find a list of points at x axis that can form a vertical wall
 	// spacing is the space between each coin
 	public ArrayList<Point> wall_points(double x, double spacing) {
