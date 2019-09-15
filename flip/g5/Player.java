@@ -55,17 +55,6 @@ public class Player implements flip.sim.Player
 		this.removeOccupiedBlockadePoints(player_pieces);
 		List<Point> blockadeImportance = this.computeBlockadeImportance(opponent_pieces, isplayer1);
 		return getMovesForBlockade(blockadeImportance, player_pieces, opponent_pieces, isplayer1);
-
-		// System.out.println("moves requested");
-		// List<Pair<Integer, Point>> moves = new ArrayList<Pair<Integer, Point>>();
-		 
-		// Pair<Integer, Point> best_move = getBestMove(player_pieces, opponent_pieces, isplayer1);
-		// moves.add(best_move);
-		// player_pieces.put(best_move.getKey(), best_move.getValue());
-		// Pair<Integer, Point> best_move2 = getBestMove(player_pieces, opponent_pieces, isplayer1);
-		// moves.add(best_move2);
-		 
-		// return moves;
 	}
 
 	private List<Pair<Integer, Point>> getMovesForBlockade(List<Point> blockade, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, boolean isplayer1) {
@@ -150,26 +139,8 @@ public class Player implements flip.sim.Player
 
 	// Construct the blockade points and return a priority list of the blockade points we want to fill
 	private List<Point> computeBlockadeImportance(Map<Integer, Point> opponent_pieces, boolean isplayer1) {
-		// Map<Point, Double> blockadeImportanceMap = new HashMap<>();
-		// for (Point blockade: this.blockadeList) {
-		// 	double minimumDistance = -1;
-		// 	for (Map.Entry<Integer, Point> entry: opponent_pieces.entrySet()) {
-		// 		// Only consider points in front of the blockade position
-		// 		if ((isplayer1 && entry.getValue().x < 19.99) || 
-		// 			(!isplayer1 && entry.getValue().x > 19.99)) {
-		// 			double distance = getDistance(blockade, entry.getValue());
-		// 			if (minimumDistance == -1 || distance < minimumDistance) {
-		// 				minimumDistance = distance;
-		// 			}
-		// 		}
-		// 	}
-		// 	blockadeImportanceMap.put(blockade, minimumDistance);
-		// }
-		// return blockadeImportanceMap.entrySet()
-		// 	.stream()
-		// 	.sorted(Comparator.comparing(Map.Entry::getValue))
-		// 	.map(Map.Entry::getKey)
-		// 	.collect(Collectors.toList());
+		// Can code this to assign importance to which part of the blockade is computed first
+		// For now, this just constructs the blockade as the default list ordering
 		return this.blockadeList;
 	}
 
@@ -186,18 +157,6 @@ public class Player implements flip.sim.Player
 			this.blockadeList.remove(filled);
 		}
 	}
-
-	// private void computeBlockadeMap(HashMap<Integer, Point> player_pieces, boolean isplayer1) { 
-	// 	this.blockadeMap = new HashMap<>();
-	// 	Map<Integer, Double> piecesOrderedByX = player_pieces.entrySet()
-	// 		.stream()
-	// 		.collect(Collectors.toMap(e -> e.getKey(), e.getValue().x));
-	// 	List<Integer> 
-				// 	.stream()
-		// 	.sorted(Comparator.comparing(Map.Entry::getValue))
-		// 	.map(Map.Entry::getKey)
-		// 	.collect(Collectors.toList());
-	// }
 
 	private void computeBlockadeMap(HashMap<Integer, Point> player_pieces, boolean isplayer1) {
 		this.blockadeMap = new HashMap<>();
@@ -232,26 +191,33 @@ public class Player implements flip.sim.Player
 		double tmcy = target.y-current.y;
 		double d = Math.sqrt(tmcx*tmcx + tmcy*tmcy);
 		double theta = Math.atan(tmcy/tmcx);
-		if (d > EPSILON && d <= 2*diameter_piece) {
+		if (d < EPSILON) {
+			; // do nothing
+		}
+		if (d >= diameter_piece - EPSILON && d < diameter_piece + EPSILON) {
+			moves.add(target);
+		} else if (d > EPSILON && d <= 2*diameter_piece) {
 			moves.addAll(moveCurrentToTargetClose(new Pair<Integer, Point>(id, current), target, player_pieces, opponent_pieces));
+			if (moves.isEmpty()) {
+				Point behind_current = new Point(current.x, current.y);
+				behind_current.x += isplayer1 ? diameter_piece : -diameter_piece;
+				moves.add(behind_current);
+			}
 		} else if (d > 2*diameter_piece && d <= 3*diameter_piece) {
 			Point new_position = getNewPointFromOldPointAndAngle(current, theta);
 			moves.add(new_position);
 			moves.addAll(moveCurrentToTargetClose(new Pair<Integer, Point>(id, new_position), target, player_pieces, opponent_pieces));
+			if (moves.size() == 1) {
+				Point behind_current = new Point(current.x, current.y);
+				behind_current.x += isplayer1 ? diameter_piece : -diameter_piece;
+				moves.add(behind_current);
+			}
 		} else if (d > 3*diameter_piece) {
 			Point m1 = getNewPointFromOldPointAndAngle(current, theta);
 			moves.add(m1);
 			Point m2 = getNewPointFromOldPointAndAngle(m1, theta);
 			moves.add(m2);	
 		}
-		// if (moves.isEmpty()) {
-		// 	theta = (isplayer1 && current.x < target.x) || (!isplayer1 && current.x > target.x) ? theta : -theta;
-		// 	Point m1 = getNewPointFromOldPointAndAngle(current, theta);
-		// 	moves.add(m1);
-		// 	// theta = -Math.PI/2 + Math.PI * random.nextDouble();
-		// 	// theta = (isplayer1 && current.x < target.x) || (!isplayer1 && current.x > target.x) ? Math.PI - theta : theta;
-		// 	// Point m2 = getNewPointFromOldPointAndAngle(cur)
-		// }
 		return moves;
 	}
 
@@ -270,7 +236,8 @@ public class Player implements flip.sim.Player
 		double tmp2 = Math.acos(Math.sqrt(tmcx2*tmcx2 + tmcy2*tmcy2)/2);
 		double theta = tpp2 + tmp2;
 		double phi = tpp2 - tmp2;
-		// Note - if you are blocked, maybe you can take the other angle first!?
+		// if you are blocked, take the other angle first
+		// if that still doesn't work, move to the point directly behind the current spot
 		Point m1 = getNewPointFromOldPointAndAngle(current_point, theta);
 		Pair<Integer, Point> next = new Pair(current_id, m1);
 		if (check_validity(next, player_pieces, opponent_pieces)) {
@@ -294,8 +261,8 @@ public class Player implements flip.sim.Player
 		Point new_position = new Point(current);
 		double delta_x = diameter_piece * Math.cos(theta);
 		double delta_y = diameter_piece * Math.sin(theta);
-		new_position.x += isplayer1 ? -delta_x : delta_x;
-		new_position.y -= delta_y;
+		new_position.x += this.isplayer1 ? -delta_x : delta_x;
+		new_position.y += this.isplayer1 ? -delta_y : delta_y;
 		return new_position;
 	}
 
@@ -307,41 +274,6 @@ public class Player implements flip.sim.Player
 		double x_diff = p2.x-p1.x;
 		double y_diff = (p2.y-p1.y)/y_scale;
 		return Math.sqrt(x_diff*x_diff + y_diff*y_diff);
-	}
-
-	private Pair<Integer, Point> getBestMove(HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, boolean isplayer1) {
-		HashMap<Integer, Point> player_pieces_eval = deepCopy(player_pieces);
-		Pair<Integer, Point> best_move = null;
-		Pair<Integer, Point> move = null;
-		Point target = isplayer1 ? new Point(-30.0, 0.0) : new Point(30.0, 0.0);
-		Double best_value = evaluateV(player_pieces, opponent_pieces, target);
-		System.out.println("current_value: " + best_value);
-		for (int i = 0; i < n; i++) { // iterate through keys instead
-		 	Point curr_position = player_pieces.get(i);
-		 	Point new_position = new Point(curr_position.x, curr_position.y);
-		 	new_position.x = isplayer1 ? new_position.x - 2 : new_position.x + 2;
-		 	new_position.y = new_position.y;
-		 	move = new Pair<Integer, Point>(i, new_position);
-		 	if(check_validity(move, player_pieces, opponent_pieces)) {
-		 		player_pieces_eval.put(move.getKey(), move.getValue());
-		 		Double value = evaluateV(player_pieces_eval, opponent_pieces, target);
-		 		System.out.println("valid move! move: " + move + " value: " + value);
-		 		if (value < best_value) {
-		 			best_value = value;
-		 			best_move = move;
-		 		}
-		 		// if (isplayer1 && (value < best_value)) {
-		 		// 	best_value = value;
-		 		// 	best_move = move;
-		 		// } else if (!isplayer1 && (value > best_value)) {
-		 		// 	best_value = value;
-		 		// 	best_move = move;
-		 		// }
-		 	}
-			player_pieces_eval = deepCopy(player_pieces); // better way to reset by undoing what was done
-		}
-		System.out.println("best move! move: " + best_move + " best_value: " + best_value);
-		return best_move;
 	}
 
 	private HashMap<Integer, Point> deepCopy(HashMap<Integer, Point> map) {
