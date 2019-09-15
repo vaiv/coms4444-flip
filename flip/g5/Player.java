@@ -15,21 +15,22 @@ public class Player implements flip.sim.Player
 	private Integer n;
 	private Double diameter_piece;
 
-	private static final double EPSILON = 0.01;
+	private static final double EPSILON = 0.001;
 	private static final double B1  = -17.30;
-	private static final double B2  = -13.84;
-	private static final double B3  = -10.38;
-	private static final double B4  = -6.92;
-	private static final double B5  = -3.46;
-	private static final double B6  = 0.00;
-	private static final double B7  = 3.46;
+	private static final double B2  = 17.30;
+	private static final double B3  = -13.84;
+	private static final double B4  = 13.84;
+	private static final double B5  = -10.38;
+	private static final double B6  = 10.38;
+	private static final double B7  = -6.92;
 	private static final double B8  = 6.92;
-	private static final double B9  = 10.38;
-	private static final double B10 = 13.84;
-	private static final double B11 = 17.30;
+	private static final double B9  = -3.46;
+	private static final double B10 = 3.46;
+	private static final double B11 = 0.00;
 
-	private static final Set<Double> BLOCKADE_SET = new HashSet<>(Arrays.asList(B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, B11));
-	private Map<Integer, Point> blockadeMap = new HashMap<>();
+	private static final List<Double> BLOCKADE_YCOORD = new ArrayList<>(Arrays.asList(B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, B11));
+	private List<Point> blockadeList = new ArrayList<>();
+	private Map<Point, Integer> blockadeMap = new HashMap<>();
 
 	public Player()
 	{
@@ -45,13 +46,15 @@ public class Player implements flip.sim.Player
 		this.n = n;
 		this.isplayer1 = isplayer1;
 		this.diameter_piece = diameter_piece;
+		this.initializeBlockadeList(isplayer1);
 		computeBlockadeMap(pieces, isplayer1);
 	}
 
 	public List<Pair<Integer, Point>> getMoves(Integer num_moves, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, boolean isplayer1)
 	{
-
-		return getMovesForBlockade(player_pieces, opponent_pieces, isplayer1);
+		this.removeOccupiedBlockadePoints(player_pieces);
+		List<Point> blockadeImportance = this.computeBlockadeImportance(opponent_pieces, isplayer1);
+		return getMovesForBlockade(blockadeImportance, player_pieces, opponent_pieces, isplayer1);
 
 		// System.out.println("moves requested");
 		// List<Pair<Integer, Point>> moves = new ArrayList<Pair<Integer, Point>>();
@@ -65,56 +68,142 @@ public class Player implements flip.sim.Player
 		// return moves;
 	}
 
-	private List<Pair<Integer, Point>> getMovesForBlockade(HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, boolean isplayer1) {
-		if (n >= 11) {
-			List<Pair<Integer, Point>> moves = new ArrayList<>();
-			Set<Integer> finished = new HashSet<>();
-			for (Map.Entry<Integer, Point> entry: blockadeMap.entrySet()) {
-				Point current = player_pieces.get(entry.getKey());
-				Point target = entry.getValue();
-				double d = getDistance(current, target, 1);
-				if (d < EPSILON) {
-					finished.add(entry.getKey());
-				}
-			}
-			for (Integer i: finished) {
-				blockadeMap.remove(i);
-			}
+	private List<Pair<Integer, Point>> getMovesForBlockade(List<Point> blockade, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, boolean isplayer1) {
+		if (this.n < 11) return new ArrayList<>();
 
-			for (Map.Entry<Integer, Point> entry: blockadeMap.entrySet()) {
-				System.out.println("Start: " + " x: " + player_pieces.get(entry.getKey()).x +
-					" y: " + player_pieces.get(entry.getKey()).y);
-				System.out.println("Target: " + " x: " + entry.getValue().x +
-					" y: " + entry.getValue().y);
-				List<Point> points = moveCurrentToTarget(player_pieces.get(entry.getKey()), entry.getValue());
-				for (Point point: points) {
-					Pair<Integer, Point> move = new Pair(entry.getKey(), point);
-					System.out.println("Update: " + " x: " + point.x + " y: " + point.y);
-					if(check_validity(move, player_pieces, opponent_pieces)) {
-						System.out.println("Valid");
-						moves.add(move);
-						player_pieces.put(entry.getKey(), point);
-					} else {
-						System.out.println("Invalid");
-						break;
-					}
+		List<Pair<Integer, Point>> moves = new ArrayList<>();
+
+		// Match pieces to blockade points from top to bottom !!! (as an approximation)
+		// Compute the minimum weight bipartite matching for a better solution
+		for (Point target : blockade) {
+			// Find the nearest piece behind the blockade and move it towards the blockade point
+			Integer id = this.blockadeMap.get(target);
+			Point current = player_pieces.get(id);
+			System.out.println("Start: " + " x: " + current.x + " y: " + current.y);
+			System.out.println("Target: " + " x: " + target.x + " y: " + target.y);
+			List<Point> points = moveCurrentToTarget(id, current, target, player_pieces, opponent_pieces);
+			for (Point point: points) {
+				Pair<Integer, Point> move = new Pair(id, point);
+				System.out.println("Update: " + " x: " + point.x + " y: " + point.y);
+				if (check_validity(move, player_pieces, opponent_pieces)) {
+					System.out.println("Valid!");
+					moves.add(move);
+					player_pieces.put(id, point);
+				} else {
+					System.out.println("Invalid!");
+					break;
 				}
-				if (moves.size() >= 2) break;
 			}
-			return moves;
-		} else {
-			return null;
+			if (moves.size() >= 2) break;
+		}
+		return moves;
+	}
+
+	// private List<Pair<Integer, Point>> getMovesForBlockade(HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, boolean isplayer1) {
+	// 	if (n >= 11) {
+	// 		List<Pair<Integer, Point>> moves = new ArrayList<>();
+	// 		Set<Integer> finished = new HashSet<>();
+	// 		for (Map.Entry<Integer, Point> entry: blockadeMap.entrySet()) {
+	// 			Point current = player_pieces.get(entry.getKey());
+	// 			Point target = entry.getValue();
+	// 			double d = getDistance(current, target);
+	// 			if (d < EPSILON) {
+	// 				finished.add(entry.getKey());
+	// 			}
+	// 		}
+	// 		for (Integer i: finished) {
+	// 			blockadeMap.remove(i);
+	// 		}
+
+	// 		for (Map.Entry<Integer, Point> entry: blockadeMap.entrySet()) {
+	// 			System.out.println("Start: " + " x: " + player_pieces.get(entry.getKey()).x +
+	// 				" y: " + player_pieces.get(entry.getKey()).y);
+	// 			System.out.println("Target: " + " x: " + entry.getValue().x +
+	// 				" y: " + entry.getValue().y);
+	// 			List<Point> points = moveCurrentToTarget(player_pieces.get(entry.getKey()), entry.getValue());
+	// 			for (Point point: points) {
+	// 				Pair<Integer, Point> move = new Pair(entry.getKey(), point);
+	// 				System.out.println("Update: " + " x: " + point.x + " y: " + point.y);
+	// 				if(check_validity(move, player_pieces, opponent_pieces)) {
+	// 					System.out.println("Valid");
+	// 					moves.add(move);
+	// 					player_pieces.put(entry.getKey(), point);
+	// 				} else {
+	// 					System.out.println("Invalid");
+	// 					break;
+	// 				}
+	// 			}
+	// 			if (moves.size() >= 2) break;
+	// 		}
+	// 		return moves;
+	// 	} else {
+	// 		return null;
+	// 	}
+	// }
+
+	private void initializeBlockadeList(boolean isplayer1) {
+		for (double blockade_ycoord: BLOCKADE_YCOORD) {
+			Point blockade = new Point(isplayer1 ? 19.99 : -19.99, blockade_ycoord);
+			this.blockadeList.add(blockade);
 		}
 	}
 
-	// Pick each blockade point and find the optimal piece to use
-	// This is a greedy algorithm that could be improved if necessary
+	// Construct the blockade points and return a priority list of the blockade points we want to fill
+	private List<Point> computeBlockadeImportance(Map<Integer, Point> opponent_pieces, boolean isplayer1) {
+		// Map<Point, Double> blockadeImportanceMap = new HashMap<>();
+		// for (Point blockade: this.blockadeList) {
+		// 	double minimumDistance = -1;
+		// 	for (Map.Entry<Integer, Point> entry: opponent_pieces.entrySet()) {
+		// 		// Only consider points in front of the blockade position
+		// 		if ((isplayer1 && entry.getValue().x < 19.99) || 
+		// 			(!isplayer1 && entry.getValue().x > 19.99)) {
+		// 			double distance = getDistance(blockade, entry.getValue());
+		// 			if (minimumDistance == -1 || distance < minimumDistance) {
+		// 				minimumDistance = distance;
+		// 			}
+		// 		}
+		// 	}
+		// 	blockadeImportanceMap.put(blockade, minimumDistance);
+		// }
+		// return blockadeImportanceMap.entrySet()
+		// 	.stream()
+		// 	.sorted(Comparator.comparing(Map.Entry::getValue))
+		// 	.map(Map.Entry::getKey)
+		// 	.collect(Collectors.toList());
+		return this.blockadeList;
+	}
+
+	private void removeOccupiedBlockadePoints(Map<Integer, Point> player_pieces) {
+		Set<Point> blockade_filled = new HashSet<>();
+		for (Point blockade: this.blockadeList) {
+			for (Point piece: player_pieces.values()) {
+				if (getDistance(blockade, piece) < EPSILON) {
+					blockade_filled.add(blockade);
+				}
+			}
+		}
+		for (Point filled: blockade_filled) {
+			this.blockadeList.remove(filled);
+		}
+	}
+
+	// private void computeBlockadeMap(HashMap<Integer, Point> player_pieces, boolean isplayer1) { 
+	// 	this.blockadeMap = new HashMap<>();
+	// 	Map<Integer, Double> piecesOrderedByX = player_pieces.entrySet()
+	// 		.stream()
+	// 		.collect(Collectors.toMap(e -> e.getKey(), e.getValue().x));
+	// 	List<Integer> 
+				// 	.stream()
+		// 	.sorted(Comparator.comparing(Map.Entry::getValue))
+		// 	.map(Map.Entry::getKey)
+		// 	.collect(Collectors.toList());
+	// }
+
 	private void computeBlockadeMap(HashMap<Integer, Point> player_pieces, boolean isplayer1) {
-		blockadeMap = new HashMap<>();
+		this.blockadeMap = new HashMap<>();
 		// This is just to create a deep copy of available pieces, to prevent re-using the same piece in the blockade
 		Set<Integer> unused_pieces = player_pieces.keySet().stream().collect(Collectors.toSet());
-		for (double target_y: BLOCKADE_SET) {
-			Point target = new Point(isplayer1 ? 19.99 : -19.99, target_y);
+		for (Point target: blockadeList) {
 			double shortest_distance = -1;
 			Integer best_piece = -1;
 			for (Integer unused_piece: unused_pieces) {
@@ -125,11 +214,11 @@ public class Player implements flip.sim.Player
 					best_piece = unused_piece;
 				}
 			}
-			blockadeMap.put(best_piece, target);
+			this.blockadeMap.put(target, best_piece);
 			unused_pieces.remove(best_piece);
 		}
-		for (Map.Entry<Integer, Point> entry: blockadeMap.entrySet()) {
-			System.out.println("Point ID: " + entry.getKey() + " Current: " + player_pieces.get(entry.getKey()).x + " " + player_pieces.get(entry.getKey()).y + " Target: " + entry.getValue().x + " " + entry.getValue().y);
+		for (Map.Entry<Point, Integer> entry: this.blockadeMap.entrySet()) {
+			System.out.println("Point ID: " + entry.getValue() + " Current: " + player_pieces.get(entry.getValue()).x + " " + player_pieces.get(entry.getValue()).y + " Target: " + entry.getKey().x + " " + entry.getKey().y);
 		}
 	}
 
@@ -137,33 +226,41 @@ public class Player implements flip.sim.Player
 	// If this cannot be done in a single move, move the current point directly towards the target
 	// The calling method will have to store the second move if it can only make one more move
 
-	public List<Point> moveCurrentToTarget(Point current, Point target) {
+	public List<Point> moveCurrentToTarget(Integer id, Point current, Point target, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces) {
 		List<Point> moves = new ArrayList<>();
 		double tmcx = target.x-current.x;
 		double tmcy = target.y-current.y;
 		double d = Math.sqrt(tmcx*tmcx + tmcy*tmcy);
 		double theta = Math.atan(tmcy/tmcx);
-		// if (d > 3*diameter_piece) {
-			if (d >= 0.01 && d < 2*diameter_piece) {
-				moves.addAll(moveCurrentToTargetClose(current, target));
-			// } else if (d >= 2*diameter_piece && d < 3*diameter_piece) {
-			// 	Point new_position = getNewPointFromOldPointAndAngle(current, theta);
-			// 	moves.add(new_position);
-			// 	moves.addAll(moveCurrentToTargetClose(new_position, target));
-			} else {
-				Point m1 = getNewPointFromOldPointAndAngle(current, theta);
-				moves.add(m1);
-				Point m2 = getNewPointFromOldPointAndAngle(m1, theta);
-				moves.add(m2);	
-			}
+		if (d > EPSILON && d <= 2*diameter_piece) {
+			moves.addAll(moveCurrentToTargetClose(new Pair<Integer, Point>(id, current), target, player_pieces, opponent_pieces));
+		} else if (d > 2*diameter_piece && d <= 3*diameter_piece) {
+			Point new_position = getNewPointFromOldPointAndAngle(current, theta);
+			moves.add(new_position);
+			moves.addAll(moveCurrentToTargetClose(new Pair<Integer, Point>(id, new_position), target, player_pieces, opponent_pieces));
+		} else if (d > 3*diameter_piece) {
+			Point m1 = getNewPointFromOldPointAndAngle(current, theta);
+			moves.add(m1);
+			Point m2 = getNewPointFromOldPointAndAngle(m1, theta);
+			moves.add(m2);	
+		}
+		// if (moves.isEmpty()) {
+		// 	theta = (isplayer1 && current.x < target.x) || (!isplayer1 && current.x > target.x) ? theta : -theta;
+		// 	Point m1 = getNewPointFromOldPointAndAngle(current, theta);
+		// 	moves.add(m1);
+		// 	// theta = -Math.PI/2 + Math.PI * random.nextDouble();
+		// 	// theta = (isplayer1 && current.x < target.x) || (!isplayer1 && current.x > target.x) ? Math.PI - theta : theta;
+		// 	// Point m2 = getNewPointFromOldPointAndAngle(cur)
 		// }
 		return moves;
 	}
 
-	public List<Point> moveCurrentToTargetClose(Point current, Point target) {
+	public List<Point> moveCurrentToTargetClose(Pair<Integer, Point> current, Point target, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces) {
 		List<Point> moves = new ArrayList<>();
-		double tmcx = target.x-current.x;
-		double tmcy = target.y-current.y;
+		Integer current_id = current.getKey();
+		Point current_point = current.getValue();
+		double tmcx = target.x-current_point.x;
+		double tmcy = target.y-current_point.y;
 		// We need to solve for a 2-move sequence that gets the current point to the target
 		double tmcx2 = tmcx/2;
 		double tmcy2 = tmcy/2;
@@ -174,10 +271,22 @@ public class Player implements flip.sim.Player
 		double theta = tpp2 + tmp2;
 		double phi = tpp2 - tmp2;
 		// Note - if you are blocked, maybe you can take the other angle first!?
-		Point m1 = getNewPointFromOldPointAndAngle(current, theta);
-		moves.add(m1);
-		Point m2 = getNewPointFromOldPointAndAngle(m1, phi);
-		moves.add(m2);
+		Point m1 = getNewPointFromOldPointAndAngle(current_point, theta);
+		Pair<Integer, Point> next = new Pair(current_id, m1);
+		if (check_validity(next, player_pieces, opponent_pieces)) {
+			moves.add(m1);
+			Point m2 = getNewPointFromOldPointAndAngle(m1, phi);
+			moves.add(m2);
+		} else {
+			m1 = getNewPointFromOldPointAndAngle(current_point, phi);
+			if (check_validity(next, player_pieces, opponent_pieces)) {
+				moves.add(m1);
+				Point m2 = getNewPointFromOldPointAndAngle(m1, theta);
+				moves.add(m2);
+			} else {
+				System.out.println("FAILED TO MOVE TO BLOCKADE POINT");
+			}
+		}
 		return moves;
 	}
 
@@ -188,6 +297,10 @@ public class Player implements flip.sim.Player
 		new_position.x += isplayer1 ? -delta_x : delta_x;
 		new_position.y -= delta_y;
 		return new_position;
+	}
+
+	private double getDistance(Point p1, Point p2) {
+		return getDistance(p1, p2, 1);
 	}
 
 	private double getDistance(Point p1, Point p2, int y_scale) {
