@@ -105,6 +105,70 @@ public class Player implements flip.sim.Player
 				moves.add(move3);
 			}
 		}
+
+		// Attempt brute escape for each node.
+		// Potential optimization: prioritize closest stuck nodes or least-density nodes first!
+		// Another potential optimization: if it breaks free, prioritize moving the free one over another stuck one.
+		for(int id = 0; id<n; id++){
+			if(moves.size() == num_moves){
+				break;
+			}
+			Point curr_position = player_pieces.get(id);
+			if(((isplayer1 && curr_position.x < -threshold)
+					|| (!isplayer1 && curr_position.x > threshold))) continue;
+			double theta_up = 0;
+			double theta_down = 0;
+			double delta_x = 0;
+			double delta_y_up = 0;
+			double delta_y_down = 0;
+			Point new_position_up = new Point(curr_position);
+			Point new_position_down = new Point(curr_position);
+			if(isplayer1){
+				// going left...
+				// try up 135 degrees
+				theta_up = (3/4)*Math.PI;
+				// Try down 225 degrees
+				theta_down = (5/4)*Math.PI;
+
+				delta_x = diameter_piece * Math.cos(theta_up);
+				delta_y_up = diameter_piece * Math.sin(theta_up);
+				delta_y_down = diameter_piece * Math.sin(theta_down);
+
+				new_position_up.x -=delta_x;
+				new_position_down.x -=delta_x;
+
+				new_position_up.y += delta_y_up;
+				new_position_down.y += delta_y_down;
+
+			}
+			else{
+				// going right.
+				// Try up 45 degrees
+				theta_up = (1/4)*Math.PI;
+				// Try down 315 degrees
+				theta_down = (7/8)*Math.PI;
+
+				delta_x = diameter_piece * Math.cos(theta_up);
+				delta_y_up = diameter_piece * Math.sin(theta_up);
+				delta_y_down = diameter_piece * Math.sin(theta_down);
+
+				new_position_up.x +=delta_x;
+				new_position_down.x +=delta_x;
+
+				new_position_up.y += delta_y_up;
+				new_position_down.y += delta_y_down;
+
+
+			}
+			Pair<Integer, Point> move_up = new Pair<Integer, Point>(id, new_position_up);
+			Pair<Integer, Point> move_down = new Pair<Integer, Point>(id, new_position_down);
+
+
+			if(check_validity(move_up, player_pieces, opponent_pieces))
+				moves.add(move_up);
+			else if(check_validity(move_down, player_pieces, opponent_pieces))
+				moves.add(move_down);
+		}
 		
 		int num_trials = 30;
 		int i = 0;
