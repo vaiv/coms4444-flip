@@ -43,26 +43,35 @@ public class Aggressive extends Move {
 
 		Point curr_position = player_pieces.get(piece_id);
 	 	Point new_position = new Point(curr_position);
-		
-		double theta = 0;
-	 	double delta_x = diameter_piece * Math.cos(theta);
-	 	double delta_y = diameter_piece * Math.sin(theta);
 
-	 	Double val = (Math.pow(delta_x,2) + Math.pow(delta_y, 2));
-	 	// System.out.println("delta_x^2 + delta_y^2 = " + val.toString() + " theta values are " +  Math.cos(theta) + " " +  Math.sin(theta) + " diameter is " + diameter_piece);
-	 	// Log.record("delta_x^2 + delta_y^2 = " + val.toString() + " theta values are " +  Math.cos(theta) + " " +  Math.sin(theta) + " diameter is " + diameter_piece);
+	 	double theta = 0;
+	 	double numAngles = 100;
+	 	for(int i = 0; i <= numAngles; i++) {
+			if(i % 2 == 0)
+				theta -= i * Math.PI / numAngles;
+			else
+				theta += i * Math.PI / numAngles;
+		 	double delta_x = diameter_piece * Math.cos(theta);
+		 	double delta_y = diameter_piece * Math.sin(theta);
 
-	 	new_position.x = isplayer1 ? new_position.x - delta_x : new_position.x + delta_x;
-	 	new_position.y += delta_y;
-	 	move = new Pair<Integer, Point>(piece_id, new_position);
+		 	Double val = (Math.pow(delta_x,2) + Math.pow(delta_y, 2));
+		 	// System.out.println("delta_x^2 + delta_y^2 = " + val.toString() + " theta values are " +  Math.cos(theta) + " " +  Math.sin(theta) + " diameter is " + diameter_piece);
+		 	// Log.record("delta_x^2 + delta_y^2 = " + val.toString() + " theta values are " +  Math.cos(theta) + " " +  Math.sin(theta) + " diameter is " + diameter_piece);
 
-	 	Double dist = Board.getdist(player_pieces.get(move.getKey()), move.getValue());
+		 	new_position.x = isplayer1 ? new_position.x - delta_x : new_position.x + delta_x;
+		 	new_position.y += delta_y;
+		 	move = new Pair<Integer, Point>(piece_id, new_position);
 
-	 	if(checkValidity(move, player_pieces, opponent_pieces, diameter_piece))
-	 		return move;
-	 	
+		 	Double dist = Board.getdist(player_pieces.get(move.getKey()), move.getValue());
+
+		 	System.out.println("         Aggressive, theta: " + theta);
+		 	
+		 	if(checkValidity(move, player_pieces, opponent_pieces, diameter_piece)) {
+		 		System.out.println("THETA USED...Aggressive, theta: " + theta);
+		 		return move;
+		 	}
+	 	}
 		return new ObstacleCreation(player_pieces, opponent_pieces, isplayer1, n, diameter_piece).getMove();
-
 	}
 	
 	@Override

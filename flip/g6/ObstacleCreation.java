@@ -27,7 +27,7 @@ public class ObstacleCreation extends Move {
 
 	@Override
 	public boolean isPossible() {
-		return true; // TODO: Change this implementation
+		return false; // TODO: Change this implementation
 	}
 
 	@Override
@@ -93,6 +93,8 @@ public class ObstacleCreation extends Move {
 		// Log.record("distance from previous position is " + dist.toString());
 
 		// System.out.println(move.getKey() + " " + move.getValue());
+		
+		System.out.println("USED THETA...Obstacle creation, theta: " + theta);
 		return move;
 	}
 
