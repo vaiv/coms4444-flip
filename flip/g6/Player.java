@@ -44,7 +44,7 @@ public class Player implements flip.sim.Player
 		List<Pair<Integer, Point>> moves = new ArrayList<>();
 
 		for(int i = 0; i < num_moves; i++) {			
-			double randomValue = 0.7;	//Math.random();
+			double randomValue = Math.random();
 			
 			Aggressive aggressive = new Aggressive(player_pieces, opponent_pieces, isplayer1, n, diameter_piece);
 			ObstacleAvoidance obstacleAvoidance = new ObstacleAvoidance(player_pieces, opponent_pieces, isplayer1, n, diameter_piece);
@@ -58,7 +58,7 @@ public class Player implements flip.sim.Player
 					else if(obstacleAvoidance.isPossible())
 						moves.add(obstacleAvoidance.getMove());
 					else if(obstacleCreation.isPossible()) {
-						System.out.println("1");
+//						System.out.println("1");
 						moves.add(obstacleCreation.getMove());
 					}
 					/* TODO: add cases where behavior for coins need to change when 
@@ -72,7 +72,7 @@ public class Player implements flip.sim.Player
 					else if(aggressive.isPossible())
 						moves.add(aggressive.getMove());
 					else if(obstacleCreation.isPossible()) {
-						System.out.println("2");
+//						System.out.println("2");
 						moves.add(obstacleCreation.getMove());
 					}
 					/* TODO: add cases where behavior for coins need to change when 
@@ -83,10 +83,9 @@ public class Player implements flip.sim.Player
 			}
 			else {
 //				System.out.println("Move 2" + randomValue);
-				if(randomValue == THRESHOLD) {
+				if(randomValue <= THRESHOLD) {
 					if(obstacleCreation.isPossible()) {
 						moves.add(obstacleCreation.getMove());
-						System.out.println("3");
 					}
 					else if(aggressive.isPossible())
 						moves.add(aggressive.getMove());
@@ -103,7 +102,7 @@ public class Player implements flip.sim.Player
 					else if(aggressive.isPossible())
 						moves.add(aggressive.getMove());
 					else if(obstacleCreation.isPossible()) {
-						System.out.println("4");
+//						System.out.println("4");
 						moves.add(obstacleCreation.getMove());
 					}
 					/* TODO: add cases where behavior for coins need to change when 
@@ -114,8 +113,8 @@ public class Player implements flip.sim.Player
 			}
 		}
 		
-		System.out.println(moves.get(0).getKey() + " " + moves.get(0).getValue());
-		System.out.println(moves.get(1).getKey() + " " + moves.get(1).getValue());
+//		System.out.println(moves.get(0).getKey() + " " + moves.get(0).getValue());
+//		System.out.println(moves.get(1).getKey() + " " + moves.get(1).getValue());
 		
 		return moves;
 	}

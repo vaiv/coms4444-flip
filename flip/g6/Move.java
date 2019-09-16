@@ -17,6 +17,10 @@ public abstract class Move {
 	public abstract Pair<Integer, Point> getMove(); // Returns normal move for the specific strategy
 	public abstract Pair<Integer, Point> getHybridMove(); // Returns move for a different strategy
 	
+	enum Approach {
+		AGGRESSIVE, AVOIDANCE, CREATION;
+	}	
+	
 	public boolean checkValidity(Pair<Integer, Point> move, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, Double diameter_piece) {
 		boolean valid = true;
 
@@ -35,11 +39,11 @@ public abstract class Move {
 
 	}
 	
-	public HashMap<Integer, Point> getClosestPointsToOpponentBoundary(int numPoints, HashMap<Integer, Point> player_pieces, boolean isPlayer1) {
+	public HashMap<Integer, Point> getClosestPointsToOpponentBoundary(int numPoints, HashMap<Integer, Point> pieces, boolean isPlayer1) {
 		HashMap<Integer, Point> closest_pieces = new HashMap<>();
 		HashMap<Integer, Point> sorted_pieces = new HashMap<>();
-		for(Integer key : player_pieces.keySet())
-			sorted_pieces.put(key, player_pieces.get(key));
+		for(Integer key : pieces.keySet())
+			sorted_pieces.put(key, pieces.get(key));
 		Object[] sorted_pieces_array = sorted_pieces.entrySet().toArray();
 		if(isPlayer1) {
 			Arrays.sort(sorted_pieces_array, new Comparator() {
@@ -53,8 +57,7 @@ public abstract class Move {
 			    public int compare(Object o1, Object o2) {
 			        return ((Double) (((Map.Entry<Integer, Point>) o2).getValue().x)).compareTo((Double) (((Map.Entry<Integer, Point>) o1).getValue().x));
 			    }
-			});
-			
+			});			
 		}
 		List<Integer> ids = new ArrayList<>();
 		for (Object sorted_piece : sorted_pieces_array)
@@ -69,15 +72,41 @@ public abstract class Move {
 		return null;
 	}
 	
-	public HashMap<Integer, Point> getUnfinishedPlayerPieces(HashMap<Integer, Point> player_pieces, boolean isplayer1) {
+	public HashMap<Integer, Point> getUnfinishedPlayerPieces(HashMap<Integer, Point> player_pieces, boolean isplayer1, Approach approach) {
 		HashMap<Integer, Point> unfinished_player_pieces = new HashMap<>();
-		double maxInteriorDistance = player_pieces.size() / 10 + 3;
-		for(Integer i : player_pieces.keySet()) {			
-			Point curr_position = player_pieces.get(i);
-		 	if((isplayer1 && curr_position.x < -(20 + maxInteriorDistance)) || (!isplayer1 && curr_position.x > (20 + maxInteriorDistance)))
-		 		continue;
-		 	unfinished_player_pieces.put(i, curr_position);
+		
+		switch(approach) {
+			case AGGRESSIVE: {
+				double maxInteriorDistance = player_pieces.size() / 10 + 3;
+				for(Integer i : player_pieces.keySet()) {			
+					Point curr_position = player_pieces.get(i);
+				 	if((isplayer1 && curr_position.x < -(20 + maxInteriorDistance)) || (!isplayer1 && curr_position.x > (20 + maxInteriorDistance)))
+				 		continue;
+				 	unfinished_player_pieces.put(i, curr_position);
+				}
+				return unfinished_player_pieces;
+			}
+			case AVOIDANCE: {
+				return null;
+			}
+			case CREATION: {
+				double maxInteriorDistance = 0;
+				if(isplayer1) {
+					maxInteriorDistance = 21;
+				}
+				else {
+					maxInteriorDistance = -21;
+				}
+
+				for(Integer i : player_pieces.keySet()) {
+					Point curr_position = player_pieces.get(i);
+					if((isplayer1 && curr_position.x < maxInteriorDistance) || (!isplayer1 && curr_position.x > maxInteriorDistance))
+						continue;
+					unfinished_player_pieces.put(i, curr_position);
+				}
+				return unfinished_player_pieces;				
+			}
+			default: return null;
 		}
-		return unfinished_player_pieces;
 	}
 }

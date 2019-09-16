@@ -27,7 +27,7 @@ public class ObstacleAvoidance extends Move {
 
 	@Override
 	public boolean isPossible() {
-		return true; // TODO: Change this implementation
+		return false; // TODO: Change this implementation
 	}
 
 	@Override
@@ -35,7 +35,7 @@ public class ObstacleAvoidance extends Move {
 
 		Pair<Integer, Point> move = null; // TODO: Change this implementation
 
-		HashMap<Integer, Point> unfinished_pieces = getUnfinishedPlayerPieces(player_pieces, isplayer1);
+		HashMap<Integer, Point> unfinished_pieces = getUnfinishedPlayerPieces(player_pieces, isplayer1, Approach.AVOIDANCE);
 		HashMap<Integer, Point> closest_pieces = getClosestPointsToOpponentBoundary(n / 2, unfinished_pieces, isplayer1);
 		HashMap<Integer, Point> relevant_pieces = (HashMap<Integer, Point>) player_pieces.clone();
 
