@@ -1,4 +1,4 @@
-package flip.wall;
+package flip.g8wall;
 
 import java.util.List;
 import java.util.Map;
