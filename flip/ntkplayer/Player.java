@@ -51,42 +51,95 @@ public class Player implements flip.sim.Player {
 
   // getMoves
   public List<Pair<Integer, Point>> getMoves(Integer numMoves, HashMap<Integer, Point> playerPieces, HashMap<Integer, Point> opponent_pieces, boolean isplayer1) {
-    double nearestDistance = Double.POSITIVE_INFINITY;
-    Point chosenWallCoordinate = wallCoordinates.get(0);
+      double nearestDistance = Double.POSITIVE_INFINITY;
+      List<Pair<Integer, Point>> moves = new ArrayList<>();
+      Point chosenWallCoordinate = wallCoordinates.get(0);
+      int counter = 0;
+      int index = 0;
+      for(Point wallCord : wallCoordinates){
+          Integer matchedCoinId = coinWallMatches.get(wallCord);
+          Point matchedCoinPoint = playerPieces.get(matchedCoinId);
+          double distance = calculateEuclideanDistance(wallCord.x, wallCord.y, matchedCoinPoint.x, matchedCoinPoint.y);
 
-    for(Point wallCord : wallCoordinates){
-        Integer matchedCoinId = coinWallMatches.get(wallCord);
-        Point matchedCoinPoint = playerPieces.get(matchedCoinId);
-        double distance = calculateEuclideanDistance(wallCord.x, wallCord.y, matchedCoinPoint.x, matchedCoinPoint.y);
-
-        if(distance < nearestDistance) {
-          nearestDistance = distance;
-          chosenWallCoordinate = wallCord;
-        }
+          if(distance < nearestDistance) {
+            nearestDistance = distance;
+            chosenWallCoordinate = wallCord;
+            index = counter;
+          }
+          counter++;
     }
+      boolean isValid = false;
+      double numTrial = 0;
+      while (!isValid && numTrial < 500){
+          Integer nearestCoinId = coinWallMatches.get(chosenWallCoordinate);
+          Point nearestCoinPoint = playerPieces.get(nearestCoinId);
+          double deltaY = chosenWallCoordinate.y - nearestCoinPoint.y;
+          double deltaX = chosenWallCoordinate.x - nearestCoinPoint.x;
+          double theta = Math.atan(deltaY/deltaX) + (numTrial / 100);
 
-    Integer nearestCoinId = coinWallMatches.get(chosenWallCoordinate);
-    Point nearestCoinPoint = playerPieces.get(nearestCoinId);
-    double deltaY = chosenWallCoordinate.y - nearestCoinPoint.y;
-    double deltaX = chosenWallCoordinate.x - nearestCoinPoint.x;
-    double theta = Math.atan(deltaY/deltaX);
+          // first move
+          double newX = 0;
+          double newY = nearestCoinPoint.y + (2 * Math.sin(theta));
+          if(isplayer1){
+              newX = nearestCoinPoint.x - (2 * Math.cos(theta));
 
-    List<Pair<Integer, Point>> moves = new ArrayList<Pair<Integer, Point>>();
+          }
+          else{
+              newX = nearestCoinPoint.x + (2 * Math.cos(theta));
+          }
+          Point newPosition = new Point(newX, newY);
+          if(check_validity(new Pair(nearestCoinId, newPosition), playerPieces, opponent_pieces)){
+              moves.add(new Pair(nearestCoinId, newPosition));
+              if(Board.getdist(newPosition, chosenWallCoordinate) < 1){
+                wallCoordinates.remove(index);
+              }
+              break;
+          }
 
-    // first move
-    double newX = nearestCoinPoint.x + (2*Math.cos(theta));
-    double newY = nearestCoinPoint.y + (2*Math.sin(theta));
-		System.out.println(newX);
-		System.out.println(newY);
-    Point newPosition = new Point(newX, newY);
-    moves.add(new Pair(nearestCoinId, newPosition));
+          theta = Math.atan(deltaY/deltaX) - (numTrial / 100);
 
-    // second move
-    newX +=  (2/Math.cos(theta));
-    newY +=  (2/Math.sin(theta));
-    newPosition = new Point(newX, newY);
-    moves.add(new Pair(nearestCoinId, newPosition));
+          // first move
+          newX = 0;
+          newY = nearestCoinPoint.y + (2 * Math.sin(theta));
+          if(isplayer1){
+              newX = nearestCoinPoint.x - (2 * Math.cos(theta));
 
+          }
+          else{
+              newX = nearestCoinPoint.x + (2 * Math.cos(theta));
+          }
+          newPosition = new Point(newX, newY);
+          if(check_validity(new Pair(nearestCoinId, newPosition), playerPieces, opponent_pieces)){
+              moves.add(new Pair(nearestCoinId, newPosition));
+              if(Board.getdist(newPosition, chosenWallCoordinate) < 2.1){
+                  wallCoordinates.remove(index);
+              }
+              break;
+          }
+          numTrial++;
+      }
+
+//        if(check_validity(new Pair(nearestCoinId, newPosition), playerPieces, opponent_pieces)){
+//
+//            moves.add(new Pair(nearestCoinId, newPosition));
+//
+//            // second move
+//            newY +=  (2 * Math.sin(theta));
+//            if(isplayer1){
+//                newX -= 2 * Math.cos(theta);
+//            }
+//            else{
+//                newX += 2 * Math.cos(theta);
+//            }
+//            newPosition = new Point(newX, newY);
+//            moves.add(new Pair(nearestCoinId, newPosition));
+//
+//            if(Board.getdist(newPosition, chosenWallCoordinate) < 1){
+//                wallCoordinates.remove(index);
+//            }
+//            return moves;
+//        }
+//    }
     return moves;
   }
 
@@ -104,7 +157,7 @@ public class Player implements flip.sim.Player {
     double[] yCoordinates = new double[wallSize];
 
     // based on what side of board we're on
-    double xCoordinate = this.isPlayerOne ? -19 : 19;
+    double xCoordinate = this.isPlayerOne ? 19 : -19;
 
     yCoordinates[0] = y_top - gap - diameter/2;
     for(int i = 1; i < wallSize; i++){
@@ -113,12 +166,13 @@ public class Player implements flip.sim.Player {
 
     for(double yCoordinate: yCoordinates){
       double roundedY = Math.round(yCoordinate * 100.0) / 100.0;
+      System.out.println(xCoordinate + " and " + roundedY);
       wallCoordinates.add(new Point(xCoordinate, roundedY));
     }
   }
 
   public void matchCoins(HashMap<Integer, Point> coins){
-		List<Integer> coinKeys = new ArrayList<Integer>(coins.keySet());
+      List<Integer> coinKeys = new ArrayList<Integer>(coins.keySet());
     for(Point wallCord : wallCoordinates){
       double minDist = Double.POSITIVE_INFINITY;
       int minCoin = -1;
@@ -143,4 +197,26 @@ public class Player implements flip.sim.Player {
   public double calculateEuclideanDistance(double x1, double y1, double x2, double y2){
     return Math.sqrt((y2 - y1) * (y2 - y1) + (x2 - x1) * (x2 - x1));
   }
+
+    public boolean check_validity(Pair<Integer, Point> move, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces)
+    {
+        boolean valid = true;
+
+        // check if move is adjacent to previous position.
+       // System.out.println(Board.getdist(player_pieces.get(move.getKey()), move.getValue()));
+        if(!Board.almostEqual(Board.getdist(player_pieces.get(move.getKey()), move.getValue()), pieceDiameter))
+        {
+            System.out.println("distance");
+            return false;
+        }
+        // check for collisions
+        System.out.println("collision");
+        valid = valid && !Board.check_collision(player_pieces, move);
+        valid = valid && !Board.check_collision(opponent_pieces, move);
+
+        // check within bounds
+        valid = valid && Board.check_within_bounds(move);
+        return valid;
+
+    }
 }
