@@ -65,7 +65,7 @@ public class Board
             if(pieces_offsets.contains(s) || check_collision(player1, new Pair<Integer, Point>(player1.size(),new Point(x, y))))
                 continue;
 
-            if(x - diameter_piece/2  + eps < x_min || x + diameter_piece/2 - eps > x_max  || y - diameter_piece/2  + eps < y_min || y + diameter_piece/2 - eps > y_max)
+            if(x - diameter_piece/2  + eps < init_offset_x || x + diameter_piece/2 - eps > x_max  || y - diameter_piece/2  + eps < y_min || y + diameter_piece/2 - eps > y_max)
                 continue;
 
             pieces_offsets.add(s);
