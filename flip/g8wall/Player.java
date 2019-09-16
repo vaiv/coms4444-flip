@@ -59,7 +59,7 @@ public class Player implements flip.sim.Player
 
 		// Set current wall buidling objective
 		if (!wall_init) {
-			ArrayList<Point> wall = wall_points(isplayer1 ? 16.0 : -16.0, 0.7); // positions for wall
+			ArrayList<Point> wall = wall_points(isplayer1 ? 16.0 : -16.0, 1.35); // positions for wall
 			for (Point point : wall) {
 				Integer id = closest(point, player_pieces, wall_point);
 				piece_to_dest.add(new Pair<Integer, Point>(id, point));
@@ -125,7 +125,7 @@ public class Player implements flip.sim.Player
 		if (Board.almostEqual(dist, length)) {
 			result = new Point(dest);
 		}
-		else if (dist <= length) { // TODO: 2 * length
+		else if (dist <= 2 * length) { // TODO: 2 * length
 			double newX = start.x;
 			double newY = start.y;
 			double vector1_x, vector1_y, vector2_x, vector2_y;
