@@ -96,11 +96,6 @@ public class Player implements flip.sim.Player
 
 		if (!initialized) {
 			for (int i = 0; i < player_pieces.size(); i++){
-		// 		min_x = Math.min(Math.min(player_pieces.get(i).x, opponent_pieces.get(i).x), min_x);
-		// 		min_y = Math.min(Math.min(player_pieces.get(i).y, opponent_pieces.get(i).y), min_y);
-		// 		max_x = Math.max(Math.max(player_pieces.get(i).x, opponent_pieces.get(i).x), max_x);
-		// 		max_y = Math.max(Math.max(player_pieces.get(i).y, opponent_pieces.get(i).y), max_y);
-
 				loc_to_id.put(opponent_pieces.get(i), -i);
 				loc_to_id.put(player_pieces.get(i), i);
 				
@@ -122,11 +117,11 @@ public class Player implements flip.sim.Player
 				return (int)(lookForward(player_pieces, opponent_pieces, pt1, isplayer1)-lookForward(player_pieces, opponent_pieces, pt2, isplayer1));
 			}
 		});
-		 for(int player : player_list){
-			if (moves.size()>=num_moves) break;
-			if (farEnough(player_pieces, opponent_pieces, player)) continue; 
-			//double distance_to_obs = lookForward(player_pieces, opponent_pieces, move.getKey(), isplayer1);
-		 
+		for(int player : player_list){
+			if (farEnough(player_pieces, opponent_pieces, player)) {
+				continue; 
+			}
+
 			double theta = 0;
 			Point curr_position = player_pieces.get(player);
 			Pair<Integer, Point> move = new Pair<Integer, Point>(player,curr_position);
@@ -154,51 +149,9 @@ public class Player implements flip.sim.Player
 			// Pair<Integer, Point> good_move = pickMove(possible_moves, opponent_pieces, opponent_pieces, isplayer1);
 			// moves.add(good_move); 
 			// possible_moves.remove(good_move);
-			moves.add(possible_moves.get(i));
-		 }		 
-		 return moves;
-
-
-		 //  int num_trials = 30;
-		//  int i = 0;
-		//  int piece = 0; 
-		//  while(moves.size()!= num_moves && i<num_trials)
-		//  {
-		// 	// TODO: choose piece not randomly 
-		// 	if (piece > player_pieces.size() ) piece = 0; 
-		// 	Integer piece_id = piece++; //random.nextInt(n);
-		// 	while(farEnough(player_pieces, opponent_pieces, piece_id)){
-		// 		piece_id = random.nextInt(n);
-		// 	}			
-		// 	Point curr_position = player_pieces.get(piece_id);
-			
-		// 	double theta = 0;
-		// 	Pair<Integer, Point> move = new Pair<Integer, Point>(piece_id,curr_position);
-		// 	int tries = 0; 
-		// 	do {
-		// 		if (tries++ > 200){
-		// 			break; 
-		// 		}
-		// 		Point new_position = new Point(curr_position);
-		// 		double delta_x = diameter_piece * Math.cos(theta);
-		// 		double delta_y = diameter_piece * Math.sin(theta);
-		// 		Double val = (Math.pow(delta_x,2) + Math.pow(delta_y, 2));
-
-		// 		new_position.x = isplayer1 ? new_position.x - delta_x : new_position.x + delta_x;
-		// 		new_position.y += delta_y;
-		// 		move = new Pair<Integer, Point>(piece_id, new_position);
-				
-		// 		Double dist = Board.getdist(player_pieces.get(move.getKey()), move.getValue());
-		// 		//theta = theta < Math.PI/1.5 || backwards ? theta+Math.PI/8 : theta-Math.PI/8;
-		// 		theta = -Math.PI/2 + Math.PI*random.nextDouble();
-			
-		// 	} while(!check_validity(move, player_pieces, opponent_pieces));
-		//  	if(check_validity(move, player_pieces, opponent_pieces)){
-		// 		moves.add(move);
-		// 	}
-		// 	i++;
-		//  }
-		 
+		 }	
+		 return possible_moves;
+	 
 		 
 	}
 
