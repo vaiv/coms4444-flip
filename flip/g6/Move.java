@@ -12,7 +12,7 @@ import flip.sim.Point;
 import javafx.util.Pair;
 
 public abstract class Move {
-	
+		
 	public abstract boolean isPossible(); // Returns if any of the coins selected for a strategy can perform that strategy
 	public abstract Pair<Integer, Point> getMove(); // Returns normal move for the specific strategy
 	public abstract Pair<Integer, Point> getHybridMove(); // Returns move for a different strategy
@@ -67,5 +67,17 @@ public abstract class Move {
 	
 	public Pair<Integer, Point> getClosestOpponent(Pair<Integer, Point> player_piece, HashMap<Integer, Point> opponent_pieces, boolean isPlayer1) {
 		return null;
+	}
+	
+	public HashMap<Integer, Point> getUnfinishedPlayerPieces(HashMap<Integer, Point> player_pieces, boolean isplayer1) {
+		HashMap<Integer, Point> unfinished_player_pieces = new HashMap<>();
+		double maxInteriorDistance = player_pieces.size() / 10 + 3;
+		for(Integer i : player_pieces.keySet()) {			
+			Point curr_position = player_pieces.get(i);
+		 	if((isplayer1 && curr_position.x < -(20 + maxInteriorDistance)) || (!isplayer1 && curr_position.x > (20 + maxInteriorDistance)))
+		 		continue;
+		 	unfinished_player_pieces.put(i, curr_position);
+		}
+		return unfinished_player_pieces;
 	}
 }
