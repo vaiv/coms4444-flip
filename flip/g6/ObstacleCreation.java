@@ -3,7 +3,6 @@ package flip.g6;
 import java.util.HashMap;
 import java.util.Random;
 
-import flip.sim.Board;
 import flip.sim.Point;
 import javafx.util.Pair;
 
@@ -51,25 +50,27 @@ public class ObstacleCreation extends Move {
 		 	Point curr_position = player_pieces.get(piece_id);
 		 	Point new_position = new Point(curr_position);
 		 	
-//		 	System.out.println("Piece ID is " + piece_id);
-		 	
-			Point opponentCentroid = getPlayerCentroid(opponent_pieces);
-			Point teamCentroid = getPlayerCentroid(player_pieces);
-			double angleBetweenPalyerCenteroids = getAngle(teamCentroid, opponentCentroid);
-			double maxInteriorDistance = player_pieces.size()/10 + 3;
+		 	Point opponentCentroid = getPlayerCentroid(opponent_pieces);
+			 Point teamCentroid = getPlayerCentroid(player_pieces);
+			 double angleBetweenPalyerCenteroids = 0;
+			 if(player_pieces.size() > 5) {
+				 angleBetweenPalyerCenteroids = getAngle(teamCentroid, opponentCentroid);
+			 }
+			 double maxInteriorDistance = player_pieces.size()/10 + 3;
+			 double maxCentroidDistance = player_pieces.size()/10;
 			 
 			if((isplayer1 && curr_position.x < -(20 + maxInteriorDistance)) || (!isplayer1 && curr_position.x > (20 + maxInteriorDistance))) {
 		 		// Player 1
-		 		move = getMove();
+		 		return getMove();
 		 	}
 		 	
-		 	double theta = -Math.PI/2 + Math.PI * random.nextDouble();
+			double theta = -Math.PI/2 + Math.PI * random.nextDouble();
 		 	double delta_x = 0;
 		 	double delta_y = 0;
-		 	if(Math.abs(opponentCentroid.x - teamCentroid.x) > 5.00 && (opponentCentroid.x > teamCentroid.x) && !isplayer1) {
+		 	if(Math.abs(opponentCentroid.x - teamCentroid.x) > maxCentroidDistance && (opponentCentroid.x > teamCentroid.x) && !isplayer1) {
 		 		delta_x = diameter_piece * Math.cos(angleBetweenPalyerCenteroids);
 			 	delta_y = diameter_piece * Math.sin(angleBetweenPalyerCenteroids);
-		 	}else if(Math.abs(opponentCentroid.x - teamCentroid.x) > 5.00 && opponentCentroid.x < teamCentroid.x  && isplayer1) {
+		 	}else if(Math.abs(opponentCentroid.x - teamCentroid.x) > maxCentroidDistance && opponentCentroid.x < teamCentroid.x  && isplayer1) {
 		 		delta_x = diameter_piece * Math.cos(-angleBetweenPalyerCenteroids);
 			 	delta_y = diameter_piece * Math.sin(-angleBetweenPalyerCenteroids);
 		 	}else {
