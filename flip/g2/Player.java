@@ -1,28 +1,43 @@
 package flip.g2;
 
 import java.util.List;
-import java.util.Random;
 import java.util.HashMap;
 import javafx.util.Pair;
 import java.util.ArrayList;
 
 import flip.sim.Point;
 import flip.sim.Board;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
-import java.util.Map;
 
 public class Player implements flip.sim.Player {
 
     private int seed = 42;
-    private Random random;
     private boolean isPlayer1;
     private Integer n;
     private Double pieceDiameter;
+    private PlayerParameters params;
 
     public Player() {
-        random = new Random(seed);
+        params = new PlayerParameters();
+        params.offenseWeights = Arrays.asList(0.10817225568178673, 0.19579378351437962, 0.12078409912487767, -0.012847822989732294, -2.3869762884957217E-4);
+        params.defenseWeights = Arrays.asList(-0.17835669952853897, 0.022650662584658726, 0.05629321514794808, -0.03559470879552093, -0.0054959345337099764);
+    }
+
+    PlayerParameters getParams() {
+        return params;
+    }
+
+    void setParams(PlayerParameters params) {
+        this.params = params;
+    }
+
+    public HashMap<Integer, Point> flip(HashMap<Integer, Point> pieces) {
+        HashMap<Integer, Point> flippedPieces = new HashMap<>();
+        pieces.forEach((key, value) -> flippedPieces.put(key, new Point(-value.x, value.y)));
+        return flippedPieces;
     }
 
     /**
@@ -40,6 +55,88 @@ public class Player implements flip.sim.Player {
         this.pieceDiameter = pieceDiameter;
     }
 
+    public Integer sample(List<Double> pdf, double epsilon) {
+        if (Math.random() < epsilon) {
+            int greatestIdx = 0;
+            double greatestProb = 0.;
+            for (int i = 0; i < pdf.size(); i++) {
+                if (pdf.get(i) > greatestProb) {
+                    greatestProb = pdf.get(i);
+                    greatestIdx = i;
+                }
+            }
+
+            return greatestIdx;
+        }
+
+        List<Double> cdf = new ArrayList<>();
+        for (int i = 0; i < pdf.size(); i++) {
+            cdf.add(i == 0 ? pdf.get(i) : pdf.get(i) + cdf.get(i - 1));
+        }
+
+        double randomProb = Math.random();
+
+        int bestIdx = 0;
+        while (bestIdx < cdf.size()) {
+            if (randomProb < cdf.get(bestIdx)) {
+                break;
+            }
+            bestIdx++;
+        }
+        return bestIdx;
+    }
+
+    public List<Double> playerValences(List<Double> weights, HashMap<Integer, Point> playerPieces) {
+        ArrayList<ArrayList<Double>> playerInputs = new ArrayList<>();
+        for (int i = 0; i < playerPieces.keySet().size(); i++) {
+            ArrayList<Double> playerInput = new ArrayList<>();
+            Point p = playerPieces.get(i);
+
+            // X-axis features
+            double normalizedDistance = (80.0 - this.getDistanceToTarget(p)) / 80.0;
+            playerInput.add(normalizedDistance);
+
+            int quadrant = p.x <= -20 ? 0 : (p.x < 20) ? 1 : 2;
+            for (int j = 0; j < 3; j++) {
+                playerInput.add(quadrant == j ? 1.0 : 0.0);
+            }
+
+            playerInputs.add(playerInput);
+        }
+        alliedPiecesBehind(playerPieces, playerInputs);
+
+        ArrayList<Double> scores = new ArrayList<>();
+        for (int j = 0; j < playerInputs.size(); j++) {
+            ArrayList<Double> inputArr = playerInputs.get(j);
+            double score = 0;
+            for (int z = 0; z < inputArr.size(); z++) {
+                score += inputArr.get(z) * weights.get(z);
+            }
+            scores.add(score);
+        }
+
+        return scores;
+    }
+
+    List<Double> softmax(List<Double> scores) {
+        List<Double> scoresExp = new ArrayList<>();
+        for (int i = 0; i < scores.size(); i++) {
+            scoresExp.add(Math.exp(scores.get(i)));
+        }
+
+        double scoresExpSum = 0.0;
+        for (int i = 0; i < scores.size(); i++) {
+            scoresExpSum += scoresExp.get(i);
+        }
+
+        List<Double> scoresSoftmax = new ArrayList<>();
+        for (int i = 0; i < scores.size(); i++) {
+            scoresSoftmax.add(scoresExp.get(i) / scoresExpSum);
+        }
+
+        return scoresSoftmax;
+    }
+
     /**
      *
      * @param numMoves number of movements to return.
@@ -54,61 +151,80 @@ public class Player implements flip.sim.Player {
             HashMap<Integer, Point> playerPieces,
             HashMap<Integer, Point> opponentPieces,
             boolean isPlayer1) {
-        List<Pair<Integer, Point>> moves = new ArrayList<Pair<Integer, Point>>();
 
-        HashMap<Integer, Point> movablePieces = this.filterPiecesToMove(playerPieces);
-        HashMap<Integer, Double> disToTarget = this.getDistanceToTarget(movablePieces, isPlayer1);
-        HashMap<Integer, Double> disToObs = this.getDistanceToFirstObstacle(movablePieces, opponentPieces);
-        HashMap<Integer, Double> scores = new HashMap<>();
-
-        for (HashMap.Entry<Integer, Point> entry : movablePieces.entrySet()) {
-            scores.put(entry.getKey(), 1 * disToTarget.get(entry.getKey()) - 0.5 * disToObs.get(entry.getKey()));
+        HashMap<Integer, Point> pp = playerPieces;
+        HashMap<Integer, Point> op = opponentPieces;
+        if (isPlayer1) {
+            pp = this.flip(pp);
+            op = this.flip(op);
         }
 
-        List<Integer> piecesToMove = this.pickPiecesToMove(numMoves, movablePieces, scores, opponentPieces);
-        for (Integer id : piecesToMove) {
-            Point newPosition = this.getPositionToMove(new Pair<>(id, movablePieces.get(id)), opponentPieces);
-            Pair<Integer, Point> move = new Pair<>(id, newPosition);
-            if (newPosition != null && this.checkValidity(move, playerPieces, opponentPieces)) {
-                moves.add(move);
-            }
+        List<Pair<Integer, Point>> moves = new ArrayList<>();
+
+        List<Double> offenseValences = this.playerValences(params.offenseWeights, pp);
+        List<Double> defenseValences = this.playerValences(params.defenseWeights, pp);
+        List<Double> maxValences = new ArrayList<>();
+        for (int i = 0; i < offenseValences.size(); i++) {
+            maxValences.add(Math.max(offenseValences.get(i), defenseValences.get(i)));
         }
 
-        // degrade to random agent
-        int num_trials = 30;
-        int i = 0;
+        List<Double> maxValencesSoftmax = this.softmax(maxValences);
 
-        Integer[] mpIds = movablePieces.keySet().toArray(new Integer[0]);
-        while (moves.size() != numMoves && i < num_trials) {
-            //Integer piece_id = random.nextInt(mpIds.length);
-            Integer piece_id = random.nextInt(n);
+        for (int i = 0; i < numMoves; i++) {
+            int sampledId = this.sample(maxValencesSoftmax, 0.5);
 
-            Point curr_position = playerPieces.get(piece_id);
-            Point new_position = new Point(curr_position);
+            Double offensiveScore = offenseValences.get(sampledId);
+            Double defensiveScore = defenseValences.get(sampledId);
+            List<Double> strategyScores = new ArrayList();
+            strategyScores.add(offensiveScore);
+            strategyScores.add(defensiveScore);
+            int sampledStrategy = this.sample(strategyScores, 0.5);
 
-            double theta = -Math.PI / 2 + Math.PI * random.nextDouble();
-            double delta_x = pieceDiameter * Math.cos(theta);
-            double delta_y = pieceDiameter * Math.sin(theta);
-
-            Double val = (Math.pow(delta_x, 2) + Math.pow(delta_y, 2));
-            // System.out.println("delta_x^2 + delta_y^2 = " + val.toString() + " theta values are " +  Math.cos(theta) + " " +  Math.sin(theta) + " diameter is " + diameter_piece);
-            // Log.record("delta_x^2 + delta_y^2 = " + val.toString() + " theta values are " +  Math.cos(theta) + " " +  Math.sin(theta) + " diameter is " + diameter_piece);
-
-            new_position.x = isPlayer1 ? new_position.x - delta_x : new_position.x + delta_x;
-            new_position.y += delta_y;
-            Pair<Integer, Point> move = new Pair<Integer, Point>(piece_id, new_position);
-
-            Double dist = Board.getdist(playerPieces.get(move.getKey()), move.getValue());
-            // System.out.println("distance from previous position is " + dist.toString());
-            // Log.record("distance from previous position is " + dist.toString());
-
-            if (checkValidity(move, playerPieces, opponentPieces)) {
-                moves.add(move);
+            double theta = 0.0; // offensive strategy is to go straight ahead if possible
+            if (sampledStrategy == 1) {
+                theta = this.defensiveTheta(pp.get(sampledId), op);
             }
-            i++;
+
+            Pair<Integer, Point> newMove = this.getPositionToMove(
+                    new Pair<>(sampledId, pp.get(sampledId)), pp, op, theta);
+            pp.put(sampledId, newMove.getValue());
+
+            if (isPlayer1) {
+                newMove.getValue().x = -newMove.getValue().x;
+            }
+            moves.add(newMove);
         }
 
         return moves;
+    }
+
+    public double defensiveTheta(Point playerPiece, HashMap<Integer, Point> opponentPieces) {
+        double shortestDistance = 9999.0;
+        double shortestX = 0.0;
+        double shortestY = 0.0;
+
+        for (int i = 0; i < opponentPieces.keySet().size(); i++) {
+            Point op = opponentPieces.get(i);
+            if (op.x <= playerPiece.x || Math.abs(op.y - playerPiece.y) >= 20) {
+                continue;
+            } else {
+                double distance = Math.sqrt(Math.pow(playerPiece.x - op.x, 2) + Math.pow(playerPiece.y - op.y, 2));
+
+                if (distance <= shortestDistance) {
+                    shortestX = op.x;
+                    shortestY = op.y;
+                    shortestDistance = distance;
+                }
+            }
+        }
+
+        double theta = 0.0;  // if no opponent pieces ahead of us, just book it
+        if (shortestDistance <= 120.0) {
+            double deltaX = shortestX - playerPiece.x;
+            double deltaY = shortestY - playerPiece.y;
+            theta = Math.atan2(deltaY, deltaX);
+        }
+        return theta;
     }
 
     public boolean checkValidity(Pair<Integer, Point> move, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces) {
@@ -146,25 +262,67 @@ public class Player implements flip.sim.Player {
             max = 60.0;
         }
         HashMap<Integer, Point> piecesToMove = new HashMap<>();
-        for (HashMap.Entry<Integer, Point> entry : playerPieces.entrySet()) {
-            if (entry.getValue().x - this.pieceDiameter / 2 + eps < min || entry.getValue().x + this.pieceDiameter / 2 - eps > max) {
-                piecesToMove.put(entry.getKey(), entry.getValue());
-            }
-        }
+        playerPieces.entrySet().stream().filter((entry)
+                -> (entry.getValue().x - this.pieceDiameter / 2 + eps < min || entry.getValue().x + this.pieceDiameter / 2 - eps > max)
+        ).forEachOrdered((entry) -> {
+            piecesToMove.put(entry.getKey(), entry.getValue());
+        });
         return piecesToMove;
+    }
+
+    protected void alliedPiecesBehind(HashMap<Integer, Point> playerPieces, ArrayList<ArrayList<Double>> playerInputs) {
+        Point[] xSorted = playerPieces.values().stream().sorted((p1, p2) -> Double.compare(p1.x, p2.x)).toArray(Point[]::new);
+        for (int i = 0; i < playerPieces.size(); i++) {
+            Point p = playerPieces.get(i);
+            boolean pieceBehind = false;
+            int first = 0;
+            int last = playerPieces.size();
+            int mid = (first + last) / 2;
+            while (first <= last) {
+                if (xSorted[mid].x + pieceDiameter < p.x) {
+                    first = mid + 1;
+                } else if (xSorted[mid] == p || xSorted[mid].x >= p.x) {
+                    last = mid - 1;
+                } else {
+                    // found another piece in the range, next we go left and
+                    // right checking if they collide in the y-axis
+                    int j = mid;
+                    do {
+                        if (Math.abs(xSorted[j].y - p.y) <= pieceDiameter) {
+                            pieceBehind = true;
+                            break;
+                        }
+                        j++;
+                    } while (xSorted[j].x < p.x);
+                    j = mid--;
+                    while (xSorted[j].x > p.x - pieceDiameter) {
+                        if (Math.abs(xSorted[j].y - p.y) <= pieceDiameter) {
+                            pieceBehind = true;
+                            break;
+                        }
+                        j++;
+                    }
+                    break;
+                }
+                mid = (first + last) / 2;
+            }
+            playerInputs.get(i).add(pieceBehind ? 1.0 : -1.0);
+        }
+    }
+
+    protected double getDistanceToTarget(Point point) {
+        return Math.max(20 - point.x, 0.0);
     }
 
     /**
      * Computes the distances from each point to the target line in the board
      *
      * @param playerPieces
-     * @param isPlayer1
      * @return A map with the distance of each point passed
      */
-    protected HashMap<Integer, Double> getDistanceToTarget(HashMap<Integer, Point> playerPieces, boolean isPlayer1) {
-        double goal_position = isPlayer1 ? -20 : 20;
+    protected HashMap<Integer, Double> getDistancesToTarget(HashMap<Integer, Point> playerPieces) {
         HashMap<Integer, Double> distanceMap = new HashMap<>();
-        playerPieces.forEach((key, value) -> distanceMap.put(key, Math.abs(goal_position - value.x)));
+        playerPieces.forEach((key, value) -> distanceMap.put(key, Math.max(20 - value.x, 0.0)));
         return distanceMap;
     }
 
@@ -179,6 +337,7 @@ public class Player implements flip.sim.Player {
     protected HashMap<Integer, Double> getDistanceToFirstObstacle(HashMap<Integer, Point> playerPieces, HashMap<Integer, Point> opponentPieces) {
         HashMap<Integer, Double> distanceMap = new HashMap<>();
         playerPieces.forEach((key, value) -> distanceMap.put(key, 0.0));
+
         return distanceMap;
     }
 
@@ -186,38 +345,29 @@ public class Player implements flip.sim.Player {
      * Given a piece decides to what position to move it (implicitly the angle)
      *
      * @param piece
+     * @param playerPieces
      * @param opponentPieces
+     * @param theta
      * @return the position where the piece will be after moving
      */
-    protected Point getPositionToMove(Pair<Integer, Point> piece, HashMap<Integer, Point> opponentPieces) {
-        Point newPosition = new Point(piece.getValue());
-        newPosition.x = isPlayer1 ? newPosition.x - this.pieceDiameter : newPosition.x + this.pieceDiameter;
-        return newPosition;
-    }
-
-    /**
-     * Given a list of candidates pieces to move with their 'scores', decides
-     * the pieces to move
-     *
-     * @param number
-     * @param playerPieces
-     * @param scores
-     * @return the list of IDs of the pieces to move
-     */
-    protected List<Integer> pickPiecesToMove(int number, HashMap<Integer, Point> playerPieces, HashMap<Integer, Double> scores, HashMap<Integer, Point> opponentPieces) {
-        LinkedHashMap<Integer, Double> sortedByScore = this.sortHashMapByValues(scores);
-        List<Integer> selected = new ArrayList<>();
-        int i = 0;
-        for (HashMap.Entry<Integer, Double> entry : sortedByScore.entrySet()) {
-            if (this.checkValidity(new Pair<>(entry.getKey(), this.getPositionToMove(new Pair<>(entry.getKey(), playerPieces.get(entry.getKey())), opponentPieces)), playerPieces, opponentPieces)) {
-                selected.add(entry.getKey());
-                i++;
-                if (i == number) {
-                    break;
+    protected Pair<Integer, Point> getPositionToMove(
+            Pair<Integer, Point> piece, HashMap<Integer, Point> playerPieces, HashMap<Integer, Point> opponentPieces, double theta) {
+        double window = 0.0;
+        while (window < Math.PI) {
+            for (int i = -1; i < 2; i += 2) {
+                double theta_adj = theta + i * window;
+                double delta_x = 2 * Math.cos(theta_adj);
+                double delta_y = 2 * Math.sin(theta_adj);
+                Point newPos = new Point(piece.getValue().x + delta_x, piece.getValue().y + delta_y);
+                Pair<Integer, Point> newMove = new Pair(piece.getKey(), newPos);
+                if (this.checkValidity(newMove, playerPieces, opponentPieces)) {
+                    return newMove;
                 }
             }
+            window += 0.01;
         }
-        return selected;
+
+        return null;
     }
 
     public LinkedHashMap<Integer, Double> sortHashMapByValues(
