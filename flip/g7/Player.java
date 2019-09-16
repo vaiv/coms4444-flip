@@ -1,6 +1,7 @@
 package flip.g7;
 import java.util.List;
 import java.util.Collections;
+
 import java.util.Comparator;
 import java.util.List;
 import java.util.Random;
@@ -22,6 +23,7 @@ import flip.sim.Log;
  * 		- wall strategy ?
  */
 
+
 public class Player implements flip.sim.Player
 {
 	private int seed = 42;
@@ -29,9 +31,11 @@ public class Player implements flip.sim.Player
 	private boolean isplayer1;
 	private Integer n;
 	private Double diameter_piece;
+
 	private boolean initialized = false;
 	private HashMap<Point, Integer> loc_to_id = new HashMap<>();
 	private boolean stuck = false; 
+
 
 	public Player()
 	{
@@ -47,7 +51,6 @@ public class Player implements flip.sim.Player
 		this.n = n;
 		this.isplayer1 = isplayer1;
 		this.diameter_piece = diameter_piece;
-
 	}
 
 	public Boolean farEnough(HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, Integer piece_id){
@@ -62,6 +65,7 @@ public class Player implements flip.sim.Player
 		}
 		return false; 
 	}
+
 
 	// public Pair<Integer, Point> pickMove(List<Pair<Integer, Point>> possible_moves, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, boolean isplayer1){
 	// 	Pair<Integer, Point> best_move = new Pair<Integer, Point>(-1,new Point(-1,-1)); 
@@ -148,15 +152,18 @@ public class Player implements flip.sim.Player
 				Point new_position = new Point(curr_position);
 				double delta_x = diameter_piece * Math.cos(theta);
 				double delta_y = diameter_piece * Math.sin(theta);
+
 				Double val = (Math.pow(delta_x,2) + Math.pow(delta_y, 2));
 
 				new_position.x = isplayer1 ? new_position.x - delta_x : new_position.x + delta_x;
 				new_position.y += delta_y;
+
 				move = new Pair<Integer, Point>(player, new_position);
 				
 				Double dist = Board.getdist(player_pieces.get(move.getKey()), move.getValue());
 				theta = theta > 0 ? -theta : -theta + 0.01; 
-				if (check_validity(move, player_pieces, opponent_pieces)){
+				
+        if (check_validity(move, player_pieces, opponent_pieces)){
 					possible_moves.add(move);
 					break;
 				}
@@ -173,7 +180,6 @@ public class Player implements flip.sim.Player
 			stuck = true; 	
 		return possible_moves;
 	 
-		 
 	}
 
 	public boolean check_validity(Pair<Integer, Point> move, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces)
