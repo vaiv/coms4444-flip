@@ -1,4 +1,4 @@
-package flip.team6;
+package flip.g6old;
 import java.util.List;
 import java.util.Collections;
 import java.util.List;
@@ -148,4 +148,3 @@ public class Player implements flip.sim.Player
 
     }
 }
-

@@ -1,25 +1,21 @@
-package flip.ntkplayer;
-import java.util.List;
-import java.util.Collections;
+package flip.g8;
+
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Random;
-import java.util.HashMap;
-import javafx.util.Pair;
-import java.util.ArrayList;
 
-import flip.sim.Point;
 import flip.sim.Board;
-import flip.sim.Log;
+import flip.sim.Point;
+import javafx.util.Pair;
 
-public class Player implements flip.sim.Player
-{
+public class Player implements flip.sim.Player {
+
 	private int seed = 42;
 	private Random random;
 	private boolean isplayer1;
 	private Integer n;
 	private Double diameter_piece;
-	private ArrayList<Integer> offensePieces = new ArrayList<Integer>();
-	private ArrayList<Integer> defensePieces = new ArrayList<Integer>();
 
 
 	public Player()
@@ -36,58 +32,31 @@ public class Player implements flip.sim.Player
 		this.n = n;
 		this.isplayer1 = isplayer1;
 		this.diameter_piece = diameter_piece;
-
-		for(int pieceId : pieces.keySet() ) {
-			if( pieceId < n / 2) {
-				try{
-					this.offensePieces.add(pieceId);
-				}
-				catch(Exception e){
-					System.out.println(e);
-				}
-			}
-			else {
-				try{
-					this.defensePieces.add(pieceId);
-				}
-				catch(Exception e){
-					System.out.println(e);
-				}
-
-			}
-		}
-		System.out.println("defense offense sizes");
-		System.out.println(this.defensePieces.size());
-		System.out.println(this.offensePieces.size());
 	}
 
 	public List<Pair<Integer, Point>> getMoves(Integer num_moves, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, boolean isplayer1)
 	{
-
-		if( (new Random()).nextInt(100) > 50 ) {
-			// RETURN OFFENSIVE STRATEGY
-			return getOffensiveMoves(num_moves, player_pieces, opponent_pieces, isplayer1);
-		}
-		else {
-			// TODO: RETURN DEFENSIVE STRATEGY
-			return getOffensiveMoves(num_moves, player_pieces, opponent_pieces, isplayer1);
-		}
-	}
-
-	public List<Pair<Integer, Point>> getOffensiveMoves(Integer num_moves, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, boolean isplayer1)
-	{
 		 List<Pair<Integer, Point>> moves = new ArrayList<Pair<Integer, Point>>();
 
-		 int num_trials = 30;
+		 int num_trials = 130;
 		 int i = 0;
+		 
+		 for(int piece_id = 0; piece_id < n && moves.size()!=num_moves; piece_id++) {
+			 
+			 Point curr_position = player_pieces.get(piece_id);
+			 if((isplayer1 && curr_position.x<-20) || (!isplayer1 && curr_position.x>20))
+				 continue;
+			 Point new_position = new Point(curr_position);
+			 new_position.x = isplayer1 ? new_position.x - diameter_piece : new_position.x + diameter_piece;
+			 
+			 Pair<Integer, Point> move = new Pair<Integer, Point>(piece_id, new_position);
+			 if(check_validity(move, player_pieces, opponent_pieces))
+			 	moves.add(move);
+		 }
 
-		 while(moves.size()!= num_moves && i<num_trials)
+		 while(moves.size()!=num_moves && i<num_trials)
 		 {
-
-			// Picking a random offensive piece
-		 	int piece_idx = random.nextInt(offensePieces.size());
-			Integer piece_id = offensePieces.get(piece_idx);
-
+		 	Integer piece_id = random.nextInt(n);
 		 	Point curr_position = player_pieces.get(piece_id);
 		 	Point new_position = new Point(curr_position);
 
@@ -107,29 +76,29 @@ public class Player implements flip.sim.Player
 		 	// System.out.println("distance from previous position is " + dist.toString());
 		 	// Log.record("distance from previous position is " + dist.toString());
 
-		 	if(check_validity(move, player_pieces, opponent_pieces)){
+		 	if(check_validity(move, player_pieces, opponent_pieces))
 		 		moves.add(move);
-		 		System.out.print("offense size ");
-		 		System.out.println(offensePieces.size());
-		 		if((isplayer1 && new_position.x < -25) || (!isplayer1 && new_position.x > 25)){
-		 			offensePieces.remove(piece_idx);
-		 			System.out.print("piece_idx ");
-		 			System.out.println(piece_idx);
-		 			int d_piece_idx = random.nextInt(defensePieces.size());
-					Integer d_piece_id = defensePieces.get(d_piece_idx);
-					offensePieces.add(d_piece_id);
-		 		}
-		 	}
 		 	i++;
 		 }
-
+		 
+		 for(int piece_id = 0; piece_id < n && moves.size()!=num_moves; piece_id++) {
+			 
+			 Point curr_position = player_pieces.get(piece_id);
+			 Point new_position = new Point(curr_position);
+			 new_position.x = isplayer1 ? new_position.x - diameter_piece : new_position.x + diameter_piece;
+			 
+			 Pair<Integer, Point> move = new Pair<Integer, Point>(piece_id, new_position);
+			 if(check_validity(move, player_pieces, opponent_pieces))
+			 	moves.add(move);
+		 }
+		 
 		 return moves;
 	}
 
 	public boolean check_validity(Pair<Integer, Point> move, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces)
     {
         boolean valid = true;
-
+       
         // check if move is adjacent to previous position.
         if(!Board.almostEqual(Board.getdist(player_pieces.get(move.getKey()), move.getValue()), diameter_piece))
             {

@@ -4,6 +4,7 @@ import java.util.List;
 
 import javafx.util.Pair;
 import java.util.TreeMap;
+
 import flip.sim.Point;
 import flip.sim.Board;
 import flip.sim.Log;
@@ -15,15 +16,12 @@ public class Player implements flip.sim.Player
 	private boolean isplayer1;
 	private Integer n;
 	private Double diameter_piece;
-
 	private Integer threshold = 21;
 	private Integer boundary = 20;
 	private Integer height_to_count_players = 2;
 	private Double distance = 3.73; // ~= 2 + sqrt(3)
 	private Double density_cone_height = 4.0;
 	private Double density_lane_gap = 1.0;
-
-
 
 
 	public Player()
@@ -47,6 +45,7 @@ public class Player implements flip.sim.Player
 		int sign = isplayer1 ? -1 : 1;
 		List<Pair<Integer, Point>> moves = new ArrayList<Pair<Integer, Point>>();
 		int low1 = Integer.MAX_VALUE, low2 = Integer.MAX_VALUE, low1Id = -1, low2Id = -1;
+
 		for (int i = 0; i < n; i++) {  
 			int count_behind_players = 0;
 			Point curr_position = player_pieces.get(i);
@@ -172,7 +171,7 @@ public class Player implements flip.sim.Player
 		
 		int num_trials = 30;
 		int i = 0;
-
+    
 		while(moves.size()!= num_moves && i<num_trials)  {
 			Integer piece_id = random.nextInt(n);
 			
