@@ -6,6 +6,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 import java.util.HashMap;
+import java.util.HashSet;
+
 import javafx.util.Pair; 
 import java.util.ArrayList;
 
@@ -21,11 +23,16 @@ public class Player implements flip.sim.Player
 	private Integer n;
 	private Double diameter_piece;
 
+	// Stage variabl: if the wall has been initialized
 	private boolean wall_init = false;
-	// temporary variable to store current target position of each piece
-	private HashMap<Integer, Point> piece_to_dest = new HashMap<Integer, Point>();
-	// points selected to be the wall
+	// points that's used to build a wall
 	private HashMap<Integer, Point> wall_point = new HashMap<Integer, Point>();
+	// indicates if a coin should be not be moved, like coins forming a wall
+	private HashSet<Integer> ignored_piece = new HashSet<Integer>();
+	// temporary variable to store current destination of each piece
+	private ArrayList<Pair<Integer, Point>> piece_to_dest = new ArrayList<Pair<Integer, Point>>();
+	// cached moves, the moves is always valid
+	private ArrayList<Pair<Integer, Point>> cached_moves = new ArrayList<Pair<Integer, Point>>();
 
 	public Player()
 	{
@@ -52,20 +59,36 @@ public class Player implements flip.sim.Player
 
 		// Set current wall buidling objective
 		if (!wall_init) {
-			ArrayList<Point> wall = wall_points(isplayer1 ? 18.0 : -18.0, 1.0); // positions for wall
+			ArrayList<Point> wall = wall_points(isplayer1 ? 16.0 : -16.0, 0.7); // positions for wall
 			for (Point point : wall) {
 				Integer id = closest(point, player_pieces, wall_point);
-				piece_to_dest.put(id, point);
+				piece_to_dest.add(new Pair<Integer, Point>(id, point));
 				wall_point.put(id, point);
+				//System.out.println("point" + point.x + "," + point.y);
 			}
 			wall_init = true;
 		}
 
-		for (Integer id : piece_to_dest.keySet()) {
+		// for (Pair<Integer, Point> pair : piece_to_dest) {
+		// 	Integer id = pair.getKey();
+		// 	Point dest = pair.getValue();
+		// 	if (ignored_piece.contains(id)) continue;
+		// 	while (moves.size() < num_moves && i < num_trials) {
+		// 		Point temp = find_move(player_pieces.get(id), dest);
+		// 		Pair<Integer, Point> move = new Pair<Integer, Point>(id, temp);
+		// 		if(check_validity(move, player_pieces, opponent_pieces))
+		// 			moves.add(move);
+		// 		++i;
+		// 	}
+		// }
+
+		// TODO: mark coins in the wall position
+		for (Pair<Integer, Point> pair : piece_to_dest) {
+			Integer id = pair.getKey();
+			Point dest = pair.getValue(); 
 			if (moves.size() >= num_moves || i >= num_trials) 
 				break;
-			Point dest = piece_to_dest.get(id);
-			Point temp = find_move(player_pieces.get(id), dest);
+			Point temp = find_move_exact(player_pieces.get(id), dest);
 			Pair<Integer, Point> move = new Pair<Integer, Point>(id, temp);
 			if(check_validity(move, player_pieces, opponent_pieces))
 				moves.add(move);
@@ -73,29 +96,6 @@ public class Player implements flip.sim.Player
 		}
 
 		return moves;
-
-		// while(moves.size()!= num_moves && i<num_trials)
-		// {
-		//  	Integer piece_id = random.nextInt(n);
-		//  	Point curr_position = player_pieces.get(piece_id);
-		// 	Point new_position = new Point(curr_position);
-			
-
-			
-		// 	Point temp = find_move(curr_position, new Point(0, 0));
-
-		//  	Pair<Integer, Point> move = new Pair<Integer, Point>(piece_id, temp);
-
-		//  	Double dist = Board.getdist(player_pieces.get(move.getKey()), move.getValue());
-		//  	// System.out.println("distance from previous position is " + dist.toString());
-		//  	// Log.record("distance from previous position is " + dist.toString());
-
-		//  	if(check_validity(move, player_pieces, opponent_pieces))
-		//  		moves.add(move);
-		//  	i++;
-		// }
-		 
-		// return moves;
 	}
 
 	// Find the distance between two points
@@ -106,22 +106,54 @@ public class Player implements flip.sim.Player
 		return dist;
 	}
 
-	// Find a valid move that moves a coin closer to destination
-	// TODO: more advanced path finding algorithm
-	public Point find_move(Point start, Point dest) {
+	// Find a valid move that moves a coin exactly to the destination
+	// TODO: more advanced path finding algorithm, avoid obstacles, refractor
+	// WARNING: this one only works when start and dest are both on the left or right side
+	// please only use this for building walls
+	public Point find_move_exact(Point start, Point dest) {
+		if (isplayer1) { // Very questionable logic here
+			start = new Point(start);
+			dest = new Point(dest);
+			start.x *= -1;
+			dest.x *= -1;
+		}
+		Point result;
 		double length = this.diameter_piece;
 		double y_diff = dest.y - start.y;
 		double x_diff = dest.x - start.x;
-		if (Math.sqrt(Math.pow(x_diff, 2) + Math.pow(y_diff, 2)) <= length) {
-			return new Point(dest);
+		double dist = Math.sqrt(Math.pow(x_diff, 2) + Math.pow(y_diff, 2));
+		if (Board.almostEqual(dist, length)) {
+			result = new Point(dest);
 		}
-		double ratio = length / Math.sqrt(Math.pow(x_diff, 2) + Math.pow(y_diff, 2));
-		double newX = start.x + x_diff * ratio;
-		double newY = start.y + y_diff * ratio;
-		return new Point(newX, newY);
+		else if (dist <= length) { // TODO: 2 * length
+			double newX = start.x;
+			double newY = start.y;
+			double vector1_x, vector1_y, vector2_x, vector2_y;
+			vector1_x = 0.5 * (dest.x - start.x);
+			vector1_y = 0.5 * (dest.y - start.y);
+			double vector1_length = dist / 2;
+			double vector2_length = Math.sqrt(Math.pow(length, 2) - Math.pow(vector1_length, 2));
+
+			vector2_x = -(vector1_y / vector1_length) * vector2_length;
+			vector2_y = (vector1_x / vector1_length) * vector2_length;
+
+			newX += (vector1_x + vector2_x);
+			newY += (vector1_y + vector2_y);
+			result = new Point(newX, newY);
+		}
+		else {
+			double ratio = length / dist;
+			double newX = start.x + x_diff * ratio;
+			double newY = start.y + y_diff * ratio;
+			result = new Point(newX, newY);
+		}
+		if (isplayer1) { // Very questionable logic here :(
+			result.x *= -1;
+		}
+		return result;
 	}
 
-	// Find the id of a coin that's closest to a point, ignoring some
+	// Find the id of a coin that's closest to a point, ignoring some visited
 	public Integer closest(Point point, HashMap<Integer, Point> pieces, HashMap<Integer, Point> ignore) {
 		double min_distance = Double.MAX_VALUE;
 		Integer result_id = 0;
