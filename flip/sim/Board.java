@@ -104,19 +104,7 @@ public class Board
         }
         return false;
     }
-	
-	//Get all the points that can possibly block the current coin's next move m. goLeft means the next direction to go.
-    public static List<Pair<Integer,Point>> get_collision(HashMap<Integer, Point> m, Pair<Integer, Point> move)
-    {
-		List<Pair<Integer,Point>> points = new ArrayList<>();
-        for (HashMap.Entry<Integer, Point> entry : m.entrySet()) 
-        {
-            if (getdist(move.getValue(), entry.getValue()) + eps < diameter_piece)
-                points.add(new Pair<>(entry.getKey(), entry.getValue()));
-        }
-        return points;
-    }
-	
+
     public static boolean check_within_bounds(Pair<Integer, Point> move)
     {
         return !(move.getValue().x - diameter_piece/2  + eps < x_min || move.getValue().x + diameter_piece/2 - eps > x_max  || 
