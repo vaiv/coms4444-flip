@@ -15,10 +15,15 @@ public class Player implements flip.sim.Player
 	private boolean isplayer1;
 	private Integer n;
 	private Double diameter_piece;
-	private Double distance = 5.0;
+
 	private Integer threshold = 21;
 	private Integer boundary = 20;
 	private Integer height_to_count_players = 2;
+	private Double distance = 3.73; // ~= 2 + sqrt(3)
+	private Double density_cone_height = 4.0;
+	private Double density_lane_gap = 1.0;
+
+
 
 
 	public Player()
@@ -60,8 +65,18 @@ public class Player implements flip.sim.Player
 					!check_validity(move, player_pieces, opponent_pieces)) continue;
 			int count = 0; 
 			for (Point point : opponent_pieces.values()) {
+				// Two lines parameters
+				double k1 = -sign * distance / density_cone_height;
+				double b1 = curr_position.y  - k1 * (curr_position.x - sign * density_lane_gap);
+				double k2 = sign * distance / density_cone_height;
+				double b2 = curr_position.y  - k2 * (curr_position.x - sign * density_lane_gap);
+				double x = point.x;
 				double y = point.y;
-				if (y > curr_position.y - distance && y < curr_position.y + distance) 
+				boolean condition1 = y < (curr_position.y + distance);
+				boolean condition2 = y > (curr_position.y - distance);
+				boolean condition3 = (x * k1 + b1 - y) < 0;
+				boolean condition4 = (x * k2 + b2 - y) > 0;
+				if(condition1 && condition2 && condition3 && condition4)
 					count++;
 			}
 			if (low1 > count) {        
@@ -94,10 +109,8 @@ public class Player implements flip.sim.Player
 		int num_trials = 30;
 		int i = 0;
 
-		 while(moves.size()!= num_moves && i<num_trials)
-		 {
-			 
-		 	Integer piece_id = random.nextInt(n);
+		while(moves.size()!= num_moves && i<num_trials)  {
+			Integer piece_id = random.nextInt(n);
 			
 		 	Point curr_position = player_pieces.get(piece_id);
 			if(((isplayer1 && curr_position.x < -threshold)
