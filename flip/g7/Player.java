@@ -1,11 +1,13 @@
 package flip.g7;
 import java.util.List;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Random;
 import java.util.HashMap;
 import javafx.util.Pair; 
 import java.util.ArrayList;
+import java.lang.Math;
 
 import flip.sim.Point;
 import flip.sim.Board;
@@ -18,6 +20,10 @@ public class Player implements flip.sim.Player
 	private boolean isplayer1;
 	private Integer n;
 	private Double diameter_piece;
+	private boolean initialized = false;
+	private Double min_x, min_y = Double.MAX_VALUE; 
+	private Double max_x, max_y = Double.MIN_VALUE; 
+	private HashMap<Point, Integer> loc_to_id = new HashMap<>();
 
 
 	public Player()
@@ -34,50 +40,97 @@ public class Player implements flip.sim.Player
 		this.n = n;
 		this.isplayer1 = isplayer1;
 		this.diameter_piece = diameter_piece;
+
 	}
 
 	public Boolean farEnough(HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, Integer piece_id){
 		Point curr_position = player_pieces.get(piece_id);
 		// TODO: weight number of pieces accross & factor in blocking 
-		// do not hard code 40 
+		// do not hard code 12 / 20 
 		// factor in pieces behind you 
-
-		boolean over_edge = isplayer1 ?  curr_position.x < -40 : curr_position.x > 40 ;
+		int cutoff = (int) (Math.ceil(player_pieces.size() / 12)*diameter_piece) + 20; 
+		boolean over_edge = isplayer1 ?  curr_position.x < -cutoff : curr_position.x > cutoff ;
 		if (over_edge){
 			return true;
 		}
 		return false; 
 	}
 
+	// public Pair<Integer, Point> pickMove(List<Pair<Integer, Point>> possible_moves, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, boolean isplayer1){
+		
+	// 	for (Pair<Integer, Point> move : possible_moves){
+	// 		// x 
+	// 		// move things largest distance between them and an obstacle 
+	// 		Point point = move.getValue();
+
+	// 	}
+
+	// 	return fake_point; 
+	// }
+
+	public double lookForward(HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, Integer piece_id, boolean isplayer1){
+		Point curr_position = player_pieces.get(piece_id);
+		Pair<Integer, Point> move = new Pair<Integer, Point>(piece_id, curr_position);	
+		while(valid(player_pieces, opponent_pieces, move)){
+			curr_position.y += isplayer1 ? diameter_piece : -diameter_piece;
+			move = new Pair<Integer, Point>(piece_id,curr_position);
+		}
+		return (curr_position.y-player_pieces.get(piece_id).y)/diameter_piece; 
+	}
+
+	private boolean valid(HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, Pair<Integer, Point> move) {
+		boolean valid = true;
+		// check for collisions
+        valid = valid && !Board.check_collision(player_pieces, move);
+        valid = valid && !Board.check_collision(opponent_pieces, move);
+
+        // check within bounds
+        valid = valid && Board.check_within_bounds(move);
+		return valid;
+	}
+
+
 
 	public List<Pair<Integer, Point>> getMoves(Integer num_moves, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, boolean isplayer1)
 	{
-		 List<Pair<Integer, Point>> moves = new ArrayList<Pair<Integer, Point>>();
 
-		 int num_trials = 30;
-		 int i = 0;
+		if (!initialized) {
+			for (int i = 0; i < player_pieces.size(); i++){
+		// 		min_x = Math.min(Math.min(player_pieces.get(i).x, opponent_pieces.get(i).x), min_x);
+		// 		min_y = Math.min(Math.min(player_pieces.get(i).y, opponent_pieces.get(i).y), min_y);
+		// 		max_x = Math.max(Math.max(player_pieces.get(i).x, opponent_pieces.get(i).x), max_x);
+		// 		max_y = Math.max(Math.max(player_pieces.get(i).y, opponent_pieces.get(i).y), max_y);
 
-		 while(moves.size()!= num_moves && i<num_trials)
-		 {
-			// TODO: choose piece not randomly 
-			Integer piece_id = random.nextInt(n);
-			while(farEnough(player_pieces, opponent_pieces, piece_id)){
-				piece_id = random.nextInt(n);
-			}			
-			Point curr_position = player_pieces.get(piece_id);
-			
+				loc_to_id.put(opponent_pieces.get(i), -i);
+				loc_to_id.put(player_pieces.get(i), i);
+				
+			}
+			loc_to_id.put(opponent_pieces.get(0), -100);
+			initialized = true; 
+		}
+		
+		
+		List<Pair<Integer, Point>> moves = new ArrayList<Pair<Integer, Point>>();
+		List<Pair<Integer, Point>> possible_moves = new ArrayList<Pair<Integer, Point>>();
+		
+		List<Integer> player_list = new ArrayList<>(player_pieces.keySet());
+	
+		Collections.sort(player_list, new Comparator<Integer>(){
+			@Override
+			public int compare(Integer pt1, Integer pt2) {
+				// depends on player
+				return (int)(lookForward(player_pieces, opponent_pieces, pt1, isplayer1)-lookForward(player_pieces, opponent_pieces, pt2, isplayer1));
+			}
+		});
+		 for(int player : player_list){
+			if (moves.size()>=num_moves) break;
+			if (farEnough(player_pieces, opponent_pieces, player)) continue; 
+			//double distance_to_obs = lookForward(player_pieces, opponent_pieces, move.getKey(), isplayer1);
+		 
 			double theta = 0;
-			Pair<Integer, Point> move = new Pair<Integer, Point>(piece_id,curr_position);
-			int tries = 0; 
-			boolean backwards = false; 
+			Point curr_position = player_pieces.get(player);
+			Pair<Integer, Point> move = new Pair<Integer, Point>(player,curr_position);
 			do {
-				// TODO: time out -- pick a diff piece i guess or back up 
-				if (tries++ > 100) {
-					backwards = true; 
-				} 
-				if (tries > 200){
-					break; 
-				}
 				Point new_position = new Point(curr_position);
 				double delta_x = diameter_piece * Math.cos(theta);
 				double delta_y = diameter_piece * Math.sin(theta);
@@ -85,20 +138,68 @@ public class Player implements flip.sim.Player
 
 				new_position.x = isplayer1 ? new_position.x - delta_x : new_position.x + delta_x;
 				new_position.y += delta_y;
-				move = new Pair<Integer, Point>(piece_id, new_position);
+				move = new Pair<Integer, Point>(player, new_position);
 				
 				Double dist = Board.getdist(player_pieces.get(move.getKey()), move.getValue());
-				theta = theta < Math.PI/1.5 || backwards ? theta+Math.PI/8 : theta-Math.PI/8;
-				//theta = -Math.PI/2 + Math.PI*random.nextDouble();
-			
-			} while(!check_validity(move, player_pieces, opponent_pieces));
-		 	if(check_validity(move, player_pieces, opponent_pieces)){
-				moves.add(move);
+				theta = theta > 0 ? -theta : -theta + 0.05; 
+				if (check_validity(move, player_pieces, opponent_pieces)){
+					possible_moves.add(move);
+					break;
+				}
 			}
-			i++;
+			while(Math.abs(theta) < Math.PI/2); 
+			
 		 }
-		 
+		 for (int i = 0; i < num_moves; i++){
+			// Pair<Integer, Point> good_move = pickMove(possible_moves, opponent_pieces, opponent_pieces, isplayer1);
+			// moves.add(good_move); 
+			// possible_moves.remove(good_move);
+			moves.add(possible_moves.get(i));
+		 }		 
 		 return moves;
+
+
+		 //  int num_trials = 30;
+		//  int i = 0;
+		//  int piece = 0; 
+		//  while(moves.size()!= num_moves && i<num_trials)
+		//  {
+		// 	// TODO: choose piece not randomly 
+		// 	if (piece > player_pieces.size() ) piece = 0; 
+		// 	Integer piece_id = piece++; //random.nextInt(n);
+		// 	while(farEnough(player_pieces, opponent_pieces, piece_id)){
+		// 		piece_id = random.nextInt(n);
+		// 	}			
+		// 	Point curr_position = player_pieces.get(piece_id);
+			
+		// 	double theta = 0;
+		// 	Pair<Integer, Point> move = new Pair<Integer, Point>(piece_id,curr_position);
+		// 	int tries = 0; 
+		// 	do {
+		// 		if (tries++ > 200){
+		// 			break; 
+		// 		}
+		// 		Point new_position = new Point(curr_position);
+		// 		double delta_x = diameter_piece * Math.cos(theta);
+		// 		double delta_y = diameter_piece * Math.sin(theta);
+		// 		Double val = (Math.pow(delta_x,2) + Math.pow(delta_y, 2));
+
+		// 		new_position.x = isplayer1 ? new_position.x - delta_x : new_position.x + delta_x;
+		// 		new_position.y += delta_y;
+		// 		move = new Pair<Integer, Point>(piece_id, new_position);
+				
+		// 		Double dist = Board.getdist(player_pieces.get(move.getKey()), move.getValue());
+		// 		//theta = theta < Math.PI/1.5 || backwards ? theta+Math.PI/8 : theta-Math.PI/8;
+		// 		theta = -Math.PI/2 + Math.PI*random.nextDouble();
+			
+		// 	} while(!check_validity(move, player_pieces, opponent_pieces));
+		//  	if(check_validity(move, player_pieces, opponent_pieces)){
+		// 		moves.add(move);
+		// 	}
+		// 	i++;
+		//  }
+		 
+		 
 	}
 
 	public boolean check_validity(Pair<Integer, Point> move, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces)
@@ -108,7 +209,6 @@ public class Player implements flip.sim.Player
         // check if move is adjacent to previous position.
         if(!Board.almostEqual(Board.getdist(player_pieces.get(move.getKey()), move.getValue()), diameter_piece))
             {
-				System.out.println("this is the problem");
                 return false;
             }
         // check for collisions
