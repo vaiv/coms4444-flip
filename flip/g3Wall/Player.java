@@ -17,7 +17,7 @@ public class Player implements flip.sim.Player {
   private int seed = 42;
   private int wallSize = 11;
   private Random random;
-  private int wallVertical = 20;
+  private int wallVertical = 15;
 
   // Init Parameters
   private boolean isPlayerOne;
@@ -129,7 +129,7 @@ public class Player implements flip.sim.Player {
   }
 
   public Pair<Integer, Point> nextValidStepTowardsX(Point current, Integer coinId, Point destination, HashMap<Integer, Point> playerPieces, HashMap<Integer, Point> opponent_pieces){
-    int granularity = 15;
+    int granularity = 200;
     for(double noise = 0; noise < Math.PI; noise+=Math.PI/granularity ){
       Pair<Integer, Point> nextMove = nextStepTowardsX(current, coinId, destination, noise);
       if(check_validity(nextMove, playerPieces, opponent_pieces)){
@@ -143,6 +143,40 @@ public class Player implements flip.sim.Player {
     return null;
   }
 
+  public List<Pair<Integer, Point>> doFinalCorrection(Integer coinId, Point position, Point target, HashMap<Integer, Point> playerPieces, HashMap<Integer, Point> opponent_pieces) {
+    List<Pair<Integer, Point>> moves = new ArrayList<>();
+    double distance = Board.getdist(position, target);
+    double theta = Math.acos(distance/(2*pieceDiameter));
+    for(double i = 0.000001; i <= 1; i++){
+      double newY = position.y + 2*Math.sin(theta) + i;
+      double newX = position.x + 2*Math.cos(theta) + i;
+      if(!check_validity(new Pair(coinId, new Point(newX, newY)),opponent_pieces, playerPieces))
+      {
+          System.out.println("validity false for 1");
+          continue;
+      }
+      System.out.println(Board.getdist(new Point(newX, newY), position));
+      moves.add(new Pair(coinId, new Point(newX, newY)));
+      newY = position.y - 2*Math.sin(Math.PI/2 - theta) + i;
+      newX = position.x + 2*Math.cos(Math.PI/2 - theta) + i;
+      System.out.println(Board.getdist(new Point(newX, newY), position));
+      moves.add(new Pair(coinId, target));
+      if(!check_validity(new Pair(coinId, target),opponent_pieces, playerPieces))
+      {
+          System.out.println("validity false for 2");
+          continue;
+      }
+      System.out.println("Successful player.java");
+      return moves;
+    }
+    return moves;
+  }
+
+  public List<Pair<Integer, Point>> doFinalCorrection1(Integer coinId, Point position, Point target, HashMap<Integer, Point> playerPieces, HashMap<Integer, Point> opponent_pieces) {
+    List<Pair<Integer, Point>> moves = new ArrayList<>();
+return moves;
+  }
+
   public List<Pair<Integer, Point>> getMoves(Integer numMoves, HashMap<Integer, Point> playerPieces, HashMap<Integer, Point> opponent_pieces, boolean isplayer1) {
     List<Pair<Integer, Point>> moves = new ArrayList<>();
 
@@ -152,11 +186,20 @@ public class Player implements flip.sim.Player {
     for(Point wallCoordinate : wallCoordinates){
       Integer coin = coinWallMatches.get(wallCoordinate);
       Point coinpos = playerPieces.get(coin);
-      if(Board.getdist(coinpos, wallCoordinate) > 0.1){
+      if(Board.getdist(coinpos, wallCoordinate) > 0.5){
         newWallCoordinates.add(wallCoordinate);
+      } else {
+        System.out.println("Did it even reach?");
+        System.out.println(wallCoordinate);
+        Integer chosenCoinId = coinWallMatches.get(wallCoordinate);
+        Point chosenCoinPosition = playerPieces.get(chosenCoinId);
+        moves = doFinalCorrection(chosenCoinId, chosenCoinPosition, wallCoordinate, playerPieces, opponent_pieces);
       }
     }
     wallCoordinates = newWallCoordinates;
+    if(moves.size() > 0) {
+      return moves;
+    }
 
     if(wallCoordinates.size() != 0) {
       Point chosenWallCoordinate = wallCoordinates.get(0);
