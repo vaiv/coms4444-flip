@@ -201,23 +201,43 @@ public class Player implements flip.sim.Player {
 		return;
 	}
 
-    public boolean check_validity(Pair<Integer, Point> move, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces)
-    {
-        boolean valid = true;
+  public boolean check_validity(Pair<Integer, Point> move, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces)
+  {
+      boolean valid = true;
 
-        // check if move is adjacent to previous position.
-       // System.out.println(Board.getdist(player_pieces.get(move.getKey()), move.getValue()));
-        if(!Board.almostEqual(Board.getdist(player_pieces.get(move.getKey()), move.getValue()), pieceDiameter))
-        {
-            return false;
-        }
-        // check for collisions
-        valid = valid && !Board.check_collision(player_pieces, move);
-        valid = valid && !Board.check_collision(opponent_pieces, move);
+      // check if move is adjacent to previous position.
+     // System.out.println(Board.getdist(player_pieces.get(move.getKey()), move.getValue()));
+      if(!Board.almostEqual(Board.getdist(player_pieces.get(move.getKey()), move.getValue()), pieceDiameter))
+      {
+          return false;
+      }
+      // check for collisions
+      valid = valid && !Board.check_collision(player_pieces, move);
+      valid = valid && !Board.check_collision(opponent_pieces, move);
 
-        // check within bounds
-        valid = valid && Board.check_within_bounds(move);
-        return valid;
+      // check within bounds
+      valid = valid && Board.check_within_bounds(move);
+      return valid;
 
-    }
+  }
+
+  public boolean check_validity(Pair<Integer, Point> move, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces)
+  {
+      boolean valid = true;
+
+      // check if move is adjacent to previous position.
+      if(!Board.almostEqual(Board.getdist(player_pieces.get(move.getKey()), move.getValue()), diameter_piece))
+          {
+              return false;
+          }
+      // check for collisions
+      valid = valid && !Board.check_collision(player_pieces, move);
+      valid = valid && !Board.check_collision(opponent_pieces, move);
+
+      // check within bounds
+      valid = valid && Board.check_within_bounds(move);
+      return valid;
+
+  }
+
 }
