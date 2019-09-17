@@ -67,27 +67,27 @@ public class Player implements flip.sim.Player
 	}
 
 
-	// public Pair<Integer, Point> pickMove(List<Pair<Integer, Point>> possible_moves, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, boolean isplayer1){
-	// 	Pair<Integer, Point> best_move = new Pair<Integer, Point>(-1,new Point(-1,-1)); 
-	// 	double best_total = Double.MIN_VALUE;
-	// 	for (Pair<Integer, Point> move : possible_moves){
-	// 		// add heuristics: 
-	// 		// - least angle (furthest distance X)
-	// 		// - how far it is from goal ? 
-	// 		// - defensive strategy ? 
-	// 		Point point = move.getValue();
-	// 		double difference = Math.abs(point.x - player_pieces.get(move.getKey()).x); 
-	// 		double distance = lookForward(player_pieces, opponent_pieces, move.getKey(), isplayer1);
-	// 		double total = 0.5 * difference + 0.5 * distance; 
-	// 		if (total > best_total){
-	// 			best_move = move; 
-	// 			best_total = total; 
-	// 		}
+	public Pair<Integer, Point> pickMove(List<Pair<Integer, Point>> possible_moves, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, boolean isplayer1){
+		Pair<Integer, Point> best_move = new Pair<Integer, Point>(-1,new Point(-1,-1)); 
+		double best_total = Double.MIN_VALUE;
+		for (Pair<Integer, Point> move : possible_moves){
+			// add heuristics: 
+			// - least angle (furthest distance X)
+			// - how far it is from goal ? 
+			// - defensive strategy ? 
+			Point point = move.getValue();
+			double difference = Math.abs(point.x - player_pieces.get(move.getKey()).x); 
+			double distance = lookForward(player_pieces, opponent_pieces, move.getKey(), isplayer1);
+			double total = 0.5 * difference + 0.5 * distance; 
+			if (total > best_total){
+				best_move = move; 
+				best_total = total; 
+			}
 
-	// 	}
+		}
 
-	// 	return best_move; 
-	// }
+		return best_move; 
+	}
 
 	public double lookForward(HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, Integer piece_id, boolean isplayer1){
 		Point curr_position = player_pieces.get(piece_id);
@@ -171,11 +171,11 @@ public class Player implements flip.sim.Player
 			while(Math.abs(theta) < stop_angle); 
 			
 		 }
-		//  for (int i = 0; i < num_moves; i++){
-		// 	Pair<Integer, Point> good_move = pickMove(possible_moves, opponent_pieces, opponent_pieces, isplayer1);
-		// 	moves.add(good_move); 
-		// 	possible_moves.remove(good_move);
-		//  }
+		 for (int i = 0; i < num_moves; i++){
+			Pair<Integer, Point> good_move = pickMove(possible_moves, opponent_pieces, opponent_pieces, isplayer1);
+			moves.add(good_move); 
+			possible_moves.remove(good_move);
+		 }
 		if (possible_moves.size() == 0) 
 			stuck = true; 	
 		return possible_moves;
