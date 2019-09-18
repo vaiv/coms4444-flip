@@ -12,10 +12,13 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 
+import java.io.*;
+
 public class Player implements flip.sim.Player {
 
     private int seed = 42;
     private boolean isPlayer1;
+    private double greedyProb;
     private Integer n;
     private Double pieceDiameter;
     private PlayerParameters params;
@@ -53,10 +56,15 @@ public class Player implements flip.sim.Player {
         this.n = n;
         this.isPlayer1 = isPlayer1;
         this.pieceDiameter = pieceDiameter;
+        this.greedyProb = 0.25;
     }
 
-    public Integer sample(List<Double> pdf, double epsilon) {
-        if (Math.random() < epsilon) {
+    public void setGreedyProb(double newProb) {
+        this.greedyProb = newProb;
+    }
+
+    public Integer sample(List<Double> pdf) {
+        if (Math.random() < this.greedyProb) {
             int greatestIdx = 0;
             double greatestProb = 0.;
             for (int i = 0; i < pdf.size(); i++) {
@@ -86,7 +94,7 @@ public class Player implements flip.sim.Player {
         return bestIdx;
     }
 
-    public List<Double> playerValences(List<Double> weights, HashMap<Integer, Point> playerPieces) {
+    public List<Double> playerValences(List<Double> weights, HashMap<Integer, Point> playerPieces, HashMap<Integer, Point> opponentPieces) {
         ArrayList<ArrayList<Double>> playerInputs = new ArrayList<>();
         for (int i = 0; i < playerPieces.keySet().size(); i++) {
             ArrayList<Double> playerInput = new ArrayList<>();
@@ -104,6 +112,8 @@ public class Player implements flip.sim.Player {
             playerInputs.add(playerInput);
         }
         alliedPiecesBehind(playerPieces, playerInputs);
+
+        densityOfOpponentPiecesInFront(playerPieces, opponentPieces, playerInputs);
 
         ArrayList<Double> scores = new ArrayList<>();
         for (int j = 0; j < playerInputs.size(); j++) {
@@ -161,8 +171,8 @@ public class Player implements flip.sim.Player {
 
         List<Pair<Integer, Point>> moves = new ArrayList<>();
 
-        List<Double> offenseValences = this.playerValences(params.offenseWeights, pp);
-        List<Double> defenseValences = this.playerValences(params.defenseWeights, pp);
+        List<Double> offenseValences = this.playerValences(params.offenseWeights, pp, op);
+        List<Double> defenseValences = this.playerValences(params.defenseWeights, pp, op);
         List<Double> maxValences = new ArrayList<>();
         for (int i = 0; i < offenseValences.size(); i++) {
             maxValences.add(Math.max(offenseValences.get(i), defenseValences.get(i)));
@@ -171,14 +181,14 @@ public class Player implements flip.sim.Player {
         List<Double> maxValencesSoftmax = this.softmax(maxValences);
 
         for (int i = 0; i < numMoves; i++) {
-            int sampledId = this.sample(maxValencesSoftmax, 0.5);
+            int sampledId = this.sample(maxValencesSoftmax);
 
             Double offensiveScore = offenseValences.get(sampledId);
             Double defensiveScore = defenseValences.get(sampledId);
             List<Double> strategyScores = new ArrayList();
             strategyScores.add(offensiveScore);
             strategyScores.add(defensiveScore);
-            int sampledStrategy = this.sample(strategyScores, 0.5);
+            int sampledStrategy = this.sample(strategyScores);
 
             double theta = 0.0; // offensive strategy is to go straight ahead if possible
             if (sampledStrategy == 1) {
@@ -313,6 +323,81 @@ public class Player implements flip.sim.Player {
     protected double getDistanceToTarget(Point point) {
         return Math.max(20 - point.x, 0.0);
     }
+
+
+    /**
+     * Return the distance of a coin to the nearest barrier (top or bottom)
+     *
+     * @param point
+     * @return the distance to the nearest barrier (top or bottom)
+     */
+    protected double getDistanceToYBarrier(Point point) {
+        double distance = 0;
+        if (point.y > 0){
+            distance = 20 - point.y;
+        } else {
+            distance = 20 + point.y;
+        }
+        return distance;
+    }
+
+    
+    /**
+     * Get a metric for the number of pieces within an x coin range in front of each piece
+     * and include this metric in playerInputs
+     *
+     * @param playerPieces
+     * @param opponentPieces
+     * @param playerInputs
+     */
+    protected void densityOfOpponentPiecesInFront(HashMap<Integer, Point> playerPieces, HashMap<Integer, Point> opponentPieces, ArrayList<ArrayList<Double>> playerInputs) {
+        Point[] xSorted = opponentPieces.values().stream().sorted((p1, p2) -> Double.compare(p1.x, p2.x)).toArray(Point[]::new);
+
+        ArrayList<ArrayList<Double>> normalizedPlayerInputs = deepClone(playerInputs);
+        int threshold = 10; //threshold of how far away we consider "nearby" - can be changed 
+        for (int i = 0; i < playerPieces.size(); i++) {
+            Point p = playerPieces.get(i);
+            int nearbycount = 0; //count of how many pieces are "nearby"
+
+            for (int j = 0; j < xSorted.length; j++){
+                //only care if it is in front in the x direction
+                if ((p.x - xSorted[j].x < threshold) && (p.x - xSorted[j].x >= 0)){
+                    if (Math.abs(p.y - xSorted[j].y) < threshold){
+                        nearbycount++;
+                    }
+                }
+            }
+            //need to turn count into some number between -1 and 1.
+            //perhaps divide by .5 x the max and then subtract 1 from every element. 
+            normalizedPlayerInputs.get(i).add((double)nearbycount);
+            //normalizePlayerInputs(normalizedPlayerInputs);
+        }
+        //playerInputs = normalizedPlayerInputs;
+    }
+
+
+    //Copying in deepClone for convenience 
+    private static <T extends Object> T deepClone(T object) {
+        if (object == null) {
+            return null;
+        }
+
+        try {
+            ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+            ObjectOutputStream objectOutputStream = new ObjectOutputStream(byteArrayOutputStream);
+            objectOutputStream.writeObject(object);
+            ByteArrayInputStream bais = new ByteArrayInputStream(byteArrayOutputStream.toByteArray());
+            ObjectInputStream objectInputStream = new ObjectInputStream(bais);
+            return (T) objectInputStream.readObject();
+        } catch (IOException | ClassNotFoundException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+
+
+
 
     /**
      * Computes the distances from each point to the target line in the board
