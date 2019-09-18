@@ -115,7 +115,7 @@ public class Player implements flip.sim.Player
 				else { // move backwards to make space
 					// TODO: random
 					temp = player_pieces.get(id);
-					temp.x -= diameter_piece;
+					temp.x -= isplayer1 ? -diameter_piece : diameter_piece;
 					move = new Pair<Integer, Point>(id, temp);
 				}
 			}
