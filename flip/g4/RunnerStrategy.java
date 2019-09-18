@@ -67,19 +67,31 @@ class RunnerStrategy{
     public void getRunnerMove(List<Pair<Integer, Point>> moves, Integer numMoves){
         if(this.status == RunnerStatus.RUNNER_SET){
             // Try passing wall
-            Point runnerLoc = this.mPlayer.playerPieces.get(this.runner);
-            
-            Pair<Integer, Point> move = new Pair<Integer, Point>(this.runner, 
-                new Point(runnerLoc.x+((this.isPlayer1)?-2:2), runnerLoc.y
-            ));
-
-            if(Utilities.check_validity(move,
-                this.mPlayer.playerPieces, this.mPlayer.opponentPieces))
+            Pair<Integer, Point> move;
+            if((move = Utilities.getForwardMove(this.runner, this.mPlayer)) != null)
                 moves.add(move);
         }
 
         else if (this.status == RunnerStatus.RUNNER_PASSED_WALL){
-            // Dash to end
+            // Simple runner strategy
+            int prev = moves.size() - 1;
+
+            while(moves.size() > prev && moves.size() < numMoves){
+                Pair<Integer, Point> move;
+                prev = moves.size() - 1;
+
+                if((move = Utilities.getForwardMove(
+                    this.runner, this.mPlayer)) != null) moves.add(move);
+                
+                else if((move = Utilities.getRandomMove(
+                    this.runner, this.mPlayer, 90)) != null)  moves.add(move);
+
+                else if((move = Utilities.getRandomMove(
+                    this.runner, this.mPlayer, 180)) != null) moves.add(move);
+
+                else if((move = Utilities.getRandomMove(
+                    this.runner, this.mPlayer, 270)) != null) moves.add(move);
+            }
         }
 
         RunnerStatus prev = this.status;

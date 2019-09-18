@@ -22,7 +22,7 @@ import flip.g4.WallStrategy;
 public class Player implements flip.sim.Player
 {
     private int seed = 42;
-    private Random random;
+    public Random random;
     public boolean isPlayer1;
     public Integer n;
     public Double diameter_piece;
@@ -302,50 +302,6 @@ public class Player implements flip.sim.Player
 
         // Post wall offensive strategy
 
-//         while (moves.size() < numMoves) {
-//             Pair<Integer, Point> move = null;
-
-
-             
-//             for (int i = 0; i < 20; i++) {
-//                 move = getForwardMove(playerPieces, opponentPieces, isPlayer1, true);
-//                  if (move != null) moves.add(move);
-//             }
-//                   //wallCount += 1;
-//              //}
-//              //move = piece.getValue();
-             
-//              /*
-//              Pair<Integer,Point> pair = orderedXProgress.get(isFront? i : (max_index -i));
-//              Point oldPosition = pair.getValue();
-//              double dx = (isPlayer1? -1 : 1) * diameter_piece;
-//              Point newPosition = new Point(oldPosition.x + dx, oldPosition.y);
-//              Pair<Integer,Point> move = new Pair<Integer,Point>(pair.getKey(), newPosition);
-//              */
-             
-//              // move the farthest away piece that can move forward
-//              //move = getForwardMove(playerPieces, opponentPieces, isPlayer1, false);
-//              //if (move != null) moves.add(move);
-
-//              // choose best forwardish direction as next option 
-// //             move = getBestForwardishMove(playerPieces, opponentPieces, isPlayer1, true);
-// //             if (move != null) moves.add(move);             
-// //             move = getBestForwardishMove(playerPieces, opponentPieces, isPlayer1, false);
-// //             if (move != null) moves.add(move);             
-
-//              // choose valid random forwardish to less forward directions as next options
-//              // Can first optimize by looking at only angles you haven't already looked at
-//              // Ideally, would have an improved function [ getBestForwardishMove(), not yet built ] that finds the best move
-//             move = getRandomMove(playerPieces, opponentPieces, isPlayer1, 90);
-//             if (move != null) moves.add(move);             
-
-//             move = getRandomMove(playerPieces, opponentPieces, isPlayer1, 180);
-//             if (move != null) moves.add(move);      
-                
-//             move = getRandomMove(playerPieces, opponentPieces, isPlayer1, 270);
-//             if (move != null) moves.add(move);             
-//          }
-
-         return moves;
+        return moves;
     }
 }

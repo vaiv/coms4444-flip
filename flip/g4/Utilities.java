@@ -138,4 +138,36 @@ class Utilities{
             return null;
         }
     }
+
+    public static Pair<Integer, Point> getForwardMove(
+        Integer pieceID, Player mPlayer) {
+        
+        double dx = (mPlayer.isPlayer1? -1 : 1) * 2.0;
+        Point oldPosition = mPlayer.playerPieces.get(pieceID);
+
+        Pair<Integer, Point> move = new Pair<Integer, Point>(pieceID, new Point(
+            oldPosition.x + dx, oldPosition.y
+        ));
+
+        if (check_validity(move, mPlayer.playerPieces, mPlayer.opponentPieces))
+            return move;
+        return null;        
+    }
+
+    public static Pair<Integer, Point> getRandomMove(
+        Integer pieceID, Player mPlayer, double spread) {
+        
+        double theta = (mPlayer.random.nextDouble() -0.5) * spread * Math.PI/180;
+        double dx = Math.cos(theta) * (mPlayer.isPlayer1?-1:1) * mPlayer.diameter_piece;
+        double dy = Math.sin(theta) * mPlayer.diameter_piece;
+        Point oldPosition = mPlayer.playerPieces.get(pieceID);
+        
+        Pair<Integer, Point> move = new Pair<Integer, Point>(pieceID, new Point(
+            oldPosition.x + dx, oldPosition.y + dy
+        ));
+
+        if (check_validity(move, mPlayer.playerPieces, mPlayer.opponentPieces))
+            return move;
+        return null;        
+    }
 }
