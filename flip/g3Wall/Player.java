@@ -4,8 +4,11 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 import java.util.HashMap;
+import java.util.Queue;
+import java.util.LinkedList;
 import javafx.util.Pair;
 import java.util.ArrayList;
+
 
 import flip.sim.Point;
 import flip.sim.Board;
@@ -28,6 +31,10 @@ public class Player implements flip.sim.Player {
   private ArrayList<Integer> allCoins = new ArrayList<>();
 	private ArrayList<Point> wallCoordinates = new ArrayList<Point>();
   private HashMap<Point, Integer> coinWallMatches = new HashMap<>();
+  // wall marching
+  Queue<Integer> wallMembers = new LinkedList<>();
+
+
 
   // Constructor
   public Player() {
@@ -52,47 +59,11 @@ public class Player implements flip.sim.Player {
     System.out.println("Wall Cooodinates Setup");
     matchCoins(pieces);
     System.out.println("Initialized NTK Player");
+    for(Integer i: coinWallMatches.values()){
+      wallMembers.add(i);
+    }
     System.out.println("====");
 
-  }
-
-  public Pair<Integer, Point> nextStepTowardssX(Point current, Integer coinId, Point destination, HashMap<Integer, Point> playerPieces, HashMap<Integer, Point> opponent_pieces){
-    // finding the next move
-    double deltaY = destination.y - current.y;
-    double deltaX = destination.x - current.x;
-    double theta = Math.atan(deltaY/deltaX);
-
-    double newY;
-    if(!isPlayerOne){
-      newY =  current.y + 2*(Math.sin(theta));
-    } else {
-      newY =  current.y - 2*(Math.sin(theta));
-    }
-
-    double newX;
-    if(!isPlayerOne){
-      newX = current.x + 2*(Math.cos(theta));
-    } else {
-      newX = current.x - 2*(Math.cos(theta));
-    }
-
-    Point nextPoint = new Point(newX, newY);
-    Pair nextMove = new Pair(coinId, nextPoint);
-    System.out.println("--\n Move validity");
-    if(!check_validity(nextMove, playerPieces, opponent_pieces)){
-      System.out.println("=====");
-      System.out.print("Chosen wall coordinate ");
-      System.out.println(destination);
-      System.out.print("Old position ");
-      System.out.println(current);
-      System.out.print("New Position ");
-      System.out.println(nextPoint);
-      System.out.print("Theta ");
-      System.out.println(theta);
-      System.out.println("Invalid move");
-      System.out.println("=====");
-    }
-    return nextMove;
   }
 
   public Pair<Integer, Point> nextStepTowardsX(Point current, Integer coinId, Point destination, double noise){
@@ -130,7 +101,7 @@ public class Player implements flip.sim.Player {
 
   public Pair<Integer, Point> nextValidStepTowardsX(Point current, Integer coinId, Point destination, HashMap<Integer, Point> playerPieces, HashMap<Integer, Point> opponent_pieces){
     int granularity = 200;
-    for(double noise = 0; noise < Math.PI; noise+=Math.PI/granularity ){
+    for(double noise = 0; noise < Math.PI/2; noise+=Math.PI/granularity ){
       Pair<Integer, Point> nextMove = nextStepTowardsX(current, coinId, destination, noise);
       if(check_validity(nextMove, playerPieces, opponent_pieces)){
         return nextMove;
@@ -172,34 +143,22 @@ public class Player implements flip.sim.Player {
     return moves;
   }
 
-  public List<Pair<Integer, Point>> doFinalCorrection1(Integer coinId, Point position, Point target, HashMap<Integer, Point> playerPieces, HashMap<Integer, Point> opponent_pieces) {
-    List<Pair<Integer, Point>> moves = new ArrayList<>();
-return moves;
-  }
-
   public List<Pair<Integer, Point>> getMoves(Integer numMoves, HashMap<Integer, Point> playerPieces, HashMap<Integer, Point> opponent_pieces, boolean isplayer1) {
     List<Pair<Integer, Point>> moves = new ArrayList<>();
 
     // filtering out parts of the wall that are built
     ArrayList<Point> newWallCoordinates = new ArrayList<Point>();
 
+
+    // wall building
     for(Point wallCoordinate : wallCoordinates){
       Integer coin = coinWallMatches.get(wallCoordinate);
       Point coinpos = playerPieces.get(coin);
       if(Board.getdist(coinpos, wallCoordinate) > 0.5){
         newWallCoordinates.add(wallCoordinate);
-      } else {
-        System.out.println("Did it even reach?");
-        System.out.println(wallCoordinate);
-        Integer chosenCoinId = coinWallMatches.get(wallCoordinate);
-        Point chosenCoinPosition = playerPieces.get(chosenCoinId);
-        moves = doFinalCorrection(chosenCoinId, chosenCoinPosition, wallCoordinate, playerPieces, opponent_pieces);
       }
     }
     wallCoordinates = newWallCoordinates;
-    if(moves.size() > 0) {
-      return moves;
-    }
 
     if(wallCoordinates.size() != 0) {
       Point chosenWallCoordinate = wallCoordinates.get(0);
@@ -214,6 +173,38 @@ return moves;
       moves.add(null);
       return moves;
     }
+
+    System.out.println(wallMembers);
+
+    Integer furthestBackCoinId = wallMembers.remove();
+    Point furthestBackPosition = playerPieces.get(furthestBackCoinId);
+    if(isPlayerOne){
+      if(furthestBackPosition.x < -23){
+        furthestBackCoinId = wallMembers.remove();
+        System.out.println("removing "+furthestBackPosition);
+      }else {
+        wallMembers.add(furthestBackCoinId);
+      }
+    } else if ( !isPlayerOne ) {
+      if(furthestBackPosition.x > 23) {
+        furthestBackCoinId = wallMembers.remove();
+        System.out.println("removing "+furthestBackPosition);
+      }else {
+        wallMembers.add(furthestBackCoinId);
+      }
+    }
+
+    Point furthestBackCoinPoint = playerPieces.get(furthestBackCoinId);
+    double x = furthestBackCoinPoint.x;
+    double y = furthestBackCoinPoint.y;
+
+
+
+    // moves.add(nextValidStepTowardsX( furthestBackCoinPoint, furthestBackCoinId, new Point(x+2, y), playerPieces, opponent_pieces));
+    // moves.add(nextValidStepTowardsX( furthestBackCoinPoint, furthestBackCoinId, new Point(x+4, y), playerPieces, opponent_pieces));
+
+    moves.add(new Pair(furthestBackCoinId, new Point(x+2, y)));
+    moves.add(new Pair(furthestBackCoinId, new Point(x+4, y)));
     return moves;
     // // march the wall
     //
@@ -241,8 +232,7 @@ return moves;
     return minCoordinate;
   }
 
-  public boolean check_validity(Pair<Integer, Point> move, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces)
-  {
+  public boolean check_validity(Pair<Integer, Point> move, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces){
       boolean valid = true;
 
       // check if move is adjacent to previous position.
