@@ -21,7 +21,7 @@ public class Player implements flip.sim.Player
 	private boolean isplayer1;
 	private Integer n;
 	private Double diameter_piece;
-    private int nPieceForWall = 11;
+    private int nPieceForWall = 12;
     private Wall wall;
 	public Player()
 	{
@@ -41,7 +41,7 @@ public class Player implements flip.sim.Player
 		this.isplayer1 = isplayer1;
 		this.diameter_piece = diameter_piece;
 
-        this.wall = new Wall(pieces, 11, isplayer1 ? 20.0 : -20.0);
+        this.wall = new Wall(pieces, nPieceForWall, isplayer1 ? 20.0 : -20.0);
 	}
 
 	public List<Pair<Integer, Point>> getMoves(Integer num_moves, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, boolean isplayer1)
@@ -91,7 +91,6 @@ public class Player implements flip.sim.Player
                         break;
                     }
                 } while (output.size() < num_moves && move != null);
-                return output;
             }
 
             int minPiece = -1;
@@ -206,7 +205,7 @@ public class Player implements flip.sim.Player
             new_position.y += delta_y1;
             move = new Pair<Integer, Point>(movingPiece, new_position);
             dist = getDist(new_position, playerPieces.get(goalPiece));
-            if(dist % 2 < .1) {
+            if(dist % 2 < .05) {
                 if(check_validity(move,	playerPieces, opponentPieces)) {
                     return new_position;
                 }
@@ -221,7 +220,7 @@ public class Player implements flip.sim.Player
             new_position.y += delta_y2;
             move = new Pair<Integer, Point>(movingPiece, new_position);
             dist = getDist(new_position, playerPieces.get(goalPiece));
-            if(dist % 2 < .1) {
+            if(dist % 2 < .05) {
                 if(check_validity(move,	playerPieces, opponentPieces)) {
                     return new_position;
                 }
