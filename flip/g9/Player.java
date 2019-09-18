@@ -28,8 +28,8 @@ public class Player implements flip.sim.Player
 		random = new Random(seed);
 	}
 
-	private double player1StoppingPoint = -15;
-	private double player2StoppingPoint = 15;
+	private double player1StoppingPoint = -35;
+	private double player2StoppingPoint = 35;
 
 	// Initialization function.
     // pieces: Location of the pieces for the player.
@@ -59,44 +59,45 @@ public class Player implements flip.sim.Player
         ArrayList<Integer> runnerPieces = new ArrayList<>();
 
         List<Pair<Integer, Point>> output = new ArrayList<Pair<Integer, Point>> ();
-        for (int i = 0; i < n; i++) {
-            if (!wallPieces.contains(i)) {
-                if (isplayer1) {
-                    if (player_pieces.get(i).x < this.wall.xPos) {
-                        runnerPieces.add(i);
+        while(output.size() < num_moves) {
+            for (int i = 0; i < n; i++) {
+                if (!wallPieces.contains(i)) {
+                    if (isplayer1) {
+                        if (player_pieces.get(i).x < this.wall.xPos) {
+                            runnerPieces.add(i);
+                        } else {
+                            backPieces.add(i);
+                        }
                     } else {
-                        backPieces.add(i);
-                    }
-                } else {
-                    if (player_pieces.get(i).x > this.wall.xPos) {
-                        runnerPieces.add(i);
-                    } else {
-                        backPieces.add(i);
+                        if (player_pieces.get(i).x > this.wall.xPos) {
+                            runnerPieces.add(i);
+                        } else {
+                            backPieces.add(i);
+                        }
                     }
                 }
             }
-        }
 
-        Pair<Integer, Point> move;
-        for (Integer i : runnerPieces) {
-            if ((isplayer1 && player_pieces.get(i).x > player1StoppingPoint) || (!isplayer1 && player_pieces.get(i).x < player2StoppingPoint)) {
-                move = new Pair(i, greedyMove(i, player_pieces, opponent_pieces, isplayer1));
-                if (move != null) {
-                    player_pieces.put(i, move.getValue());
-                    output.add(move);
-                    if (output.size() == num_moves) {
-                        return output;
+            Pair<Integer, Point> move = null;
+            for (Integer i : runnerPieces) {
+                do {
+                    if ((isplayer1 && player_pieces.get(i).x > player1StoppingPoint) || (!isplayer1 && player_pieces.get(i).x < player2StoppingPoint)) {
+                        move = greedyMove(i, player_pieces, opponent_pieces, isplayer1);
+                        if (move != null) {
+                            player_pieces.put(i, move.getValue());
+                            output.add(move);
+                        }
+                    } else {
+                        break;
                     }
-                }
+                } while (output.size() < num_moves && move != null);
+                return output;
             }
-        }
 
-        int minPiece = -1;
-        double minDist = Double.POSITIVE_INFINITY;
-        int closestWallPiece = -1;
-        if (backPieces.size() > 0) {
-
-            while(output.size() < num_moves) {
+            int minPiece = -1;
+            double minDist = Double.POSITIVE_INFINITY;
+            int closestWallPiece = -1;
+            if (backPieces.size() > 0) {
                 for (Integer i : backPieces) {
                     for (Integer j : wallPieces) {
                         double dist = getDist(player_pieces.get(i), player_pieces.get(j));
@@ -127,11 +128,11 @@ public class Player implements flip.sim.Player
                         move = greedyMove(minPiece, player_pieces, opponent_pieces, isplayer1);
                     }
                     output.add(move);
-                    this.wall.changeBrick(closestWallPiece, move);
-                    backPieces.remove(minPiece);
-                    wallPieces.add(minPiece);
-                    runnerPieces.add(closestWallPiece);
-                    wallPieces.remove(closestWallPiece);
+                    System.out.println("old wall piece: " + closestWallPiece);
+                    System.out.println("new wall piece: " + minPiece);
+                    wall.changeBrick(closestWallPiece, move);
+                    System.out.println("Should be true:" + this.wall.getWallPieceIds().contains(minPiece));
+                    System.out.println("Should be false: " + this.wall.getWallPieceIds().contains(closestWallPiece));
                 }
                 else {
                     output.add(new Pair(minPiece, getIdealTangentMove(closestWallPiece, minPiece, player_pieces, opponent_pieces)));
@@ -514,9 +515,9 @@ public class Player implements flip.sim.Player
     {
         private class Brick
         {
-            private Point idealPos;
-            private Pair<Integer, Point> piece;
-            private boolean pieceInPlace = false;
+            public Point idealPos;
+            public Pair<Integer, Point> piece;
+            public boolean pieceInPlace = false;
 
             public Brick(Point idealPos) { this.idealPos = idealPos; }
             public Point getIdealPos() { return this.idealPos; }
@@ -624,11 +625,15 @@ public class Player implements flip.sim.Player
             }
             return out;
         }
+
         public void changeBrick(Integer currentVal, Pair<Integer, Point> newBrick) {
             for(Brick brick : this.bricks) {
-                if(brick.getPiece().getKey() == currentVal) {
+                if(brick.getPiece().getKey().equals(currentVal)) {
+                    System.out.println("CHANGING BRICK");
                     brick.piece = newBrick;
                     brick.idealPos = newBrick.getValue();
+                } else {
+                    System.out.println("the big bad  " + brick.getPiece().getKey() + " " + currentVal);
                 }
             }
         }
