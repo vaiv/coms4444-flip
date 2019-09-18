@@ -66,8 +66,8 @@ class PlayerParameters {
         params.offenseWeights = new ArrayList<>();
         params.defenseWeights = new ArrayList<>();
         for (int i = 0; i < numFeatures; i++) {
-            double ow = random.nextGaussian() / 100.0;
-            double dw = random.nextGaussian() / 100.0;
+            double ow = 0.0;
+            double dw = 0.0;
             params.offenseWeights.add(ow);
             params.defenseWeights.add(dw);
         }
