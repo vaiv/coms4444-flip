@@ -18,11 +18,13 @@ import flip.sim.Log;
 import flip.g4.HungarianAlgorithm;
 import flip.g4.PieceStore;
 import flip.g4.WallStrategy;
+import flip.g4.RunnerStrategy;
+import flip.g4.Utilities;
 
 public class Player implements flip.sim.Player
 {
     private int seed = 42;
-    private Random random;
+    public Random random;
     public boolean isPlayer1;
     public Integer n;
     public Double diameter_piece;
