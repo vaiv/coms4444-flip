@@ -1,4 +1,4 @@
-// updated for 9/18 deliverable - adding the wall
+// 9/18 deliverable UPDATED SO THAT SINGLE PIECE MOVES TWICE
 package flip.g4;
 
 import java.util.List;
@@ -22,7 +22,7 @@ import flip.g4.WallStrategy;
 public class Player implements flip.sim.Player
 {
     private int seed = 42;
-    public Random random;
+    private Random random;
     public boolean isPlayer1;
     public Integer n;
     public Double diameter_piece;
@@ -42,7 +42,8 @@ public class Player implements flip.sim.Player
     // n: Number of pieces available. (default 30 in Makefile)
     // t: Total turns available.
     public void init(HashMap<Integer, Point> pieces, 
-        int n, double t, boolean isPlayer1, double diameter_piece) {
+        int n, double t, boolean isPlayer1, double diameter_piece)
+    {
         this.n = n;
         this.isPlayer1 = isPlayer1;
         this.diameter_piece = diameter_piece; // default 2
@@ -56,6 +57,7 @@ public class Player implements flip.sim.Player
             this.mWallStrategy.runner);
         
     }
+
 
     // x coordinate
     public boolean inSoftEndZone( Point piece, boolean isPlayer1 ) {
@@ -221,6 +223,7 @@ public class Player implements flip.sim.Player
         // get all our pieces from closest to farthest
 //        List<Pair<Integer,Point>> orderedXProgress = isFront? rankXProgressOutsideEndzone(playerPieces, isPlayer1):
 //                                                                            rankXProgress(playerPieces, isPlayer1);
+
         List<Pair<Integer,Point>> orderedXProgress = rankXProgressOutsideEndzone(playerPieces, isPlayer1);
 
         // one by one, check validity if we move it forward
@@ -236,6 +239,32 @@ public class Player implements flip.sim.Player
         }
         return null;        
     }
+    
+    
+    // NEW FUNCTION FOR PROGRESSIVELY LESS FORWARD MOVE OF ONE PIECE AS OPTIONS ARE EXHAUSTED
+    private Pair<Integer, Point> getForwardPieceMove( HashMap<Integer, Point> playerPieces, HashMap<Integer, Point> opponentPieces, boolean isPlayer1 ) {
+            // get all our pieces from closest to farthest
+    //        List<Pair<Integer,Point>> orderedXProgress = isFront? rankXProgressOutsideEndzone(playerPieces, isPlayer1):
+    //                                                                            rankXProgress(playerPieces, isPlayer1);
+
+    //          ORIGINAL
+    //        List<Pair<Integer,Point>> orderedXProgress = rankXProgressOutsideEndzone(playerPieces, isPlayer1);
+        List<Pair<Integer,Point>> orderedXProgress = rankXProgress(playerPieces, isPlayer1);
+
+        Pair<Integer,Point> pair = orderedXProgress.get(0);
+        Point oldPosition = pair.getValue();
+        for (int trial_num = 0; trial_num < 360; trial_num++) {
+            // select random angle (that enlarges with trial_num)
+            double theta = ((random.nextDouble() > 0.5)? -1 : 1) *trial_num *Math.PI/180;
+            double dx = Math.cos(theta) * (isPlayer1? -1 : 1) * diameter_piece, dy = Math.sin(theta) * diameter_piece;
+            Point newPosition = new Point(oldPosition.x + dx, oldPosition.y + dy);
+            Pair<Integer,Point> move = new Pair<Integer,Point>(pair.getKey(), newPosition);
+            if (Utilities.check_validity(move, playerPieces, opponentPieces)) return move;
+        }
+        return null;        
+    }
+    
+  
     
     private Pair<Integer, Point> getRandomMove( HashMap<Integer, Point> playerPieces, HashMap<Integer, Point> opponentPieces, boolean isPlayer1, double spread ) {
         int MAX_TRIALS = 100;
@@ -262,10 +291,15 @@ public class Player implements flip.sim.Player
         return null;  
     }
     
+    
+    
+    
     public List<Pair<Integer, Point>> getMoves( Integer numMoves,
         HashMap<Integer, Point> playerPieces,
         HashMap<Integer, Point> opponentPieces,
-        boolean isPlayer1 ) {
+        boolean isPlayer1 )
+    {
+        if (playerPieces.size() < 12) return getMoves12(numMoves, playerPieces, opponentPieces, isPlayer1);
 
         this.playerPieces   = playerPieces;
         this.opponentPieces = opponentPieces;
@@ -291,17 +325,74 @@ public class Player implements flip.sim.Player
             }
         }
 
-        // Post wall runner strategy: RUN
+        // Post wall runner strategy: FIRST RUNNER RUNS
         if(this.mRunnerStrategy.status==RunnerStatus.RUNNER_PASSED_WALL){
             try {
-                this.mRunnerStrategy.getRunnerMove(moves, numMoves);
+                while (moves.size() < numMoves) {
+                    Pair<Integer,Point> move = getForwardPieceMove(playerPieces, opponentPieces, isPlayer1);
+                    // if move is available, and piece is the runner
+    //                if (move != null && ) moves.add(move);
+                    updateMoveList(playerPieces, move, moves);
+                    //this.mRunnerStrategy.getRunnerMove(moves, numMoves);
+                }
+                
             } catch (Exception e) {
                 Log.log(e.toString());
             }
         }
-
-        // Post wall offensive strategy
-
         return moves;
     }
+    
+    // ###################################### NEEDS TO BE BUILT
+      // add moves to the move list and at the same time updates players
+      private void updateMoveList( HashMap<Integer, Point> playerPieces, Pair<Integer, Point> move, List<Pair<Integer, Point>> moves ) {
+          if (move != null) moves.add(move);
+          // update players
+          //System.out.println("playerPieces.get(move.getKey()).x BEFORE: " + playerPieces.get(move.getKey()).x);
+          Point piecePosition = playerPieces.get(move.getKey());
+          Point new_position = move.getValue();
+          piecePosition.x = new_position.x;
+          piecePosition.y = new_position.y;
+
+          //playerPieces.get(move.getKey()).x = move.getValue().x;
+          //playerPieces.get(move.getKey()).y = move.getValue().y;
+          //System.out.println("playerPieces.get(move.getKey()).x AFTER: " + playerPieces.get(move.getKey()).x);
+      }
+    
+    
+    public List<Pair<Integer, Point>> getMoves12( Integer numMoves, HashMap<Integer, Point> playerPieces, HashMap<Integer, Point> opponentPieces, boolean isPlayer1 ) {
+    		 List<Pair<Integer, Point>> moves = new ArrayList<Pair<Integer, Point>>();
+
+             while (moves.size() < numMoves) {
+                 Pair<Integer, Point> move = null;
+
+                 // move the closest piece that can move forward
+                 move = getForwardMove(playerPieces, opponentPieces, isPlayer1, true);
+                 updateMoveList(playerPieces, move, moves);
+
+                 // move the farthest away piece that can move forward
+                 move = getForwardMove(playerPieces, opponentPieces, isPlayer1, false);
+                 updateMoveList(playerPieces, move, moves);
+
+                 // choose best forwardish direction as next option 
+    //             move = getBestForwardishMove(playerPieces, opponentPieces, isPlayer1, true);
+    //             if (move != null) moves.add(move);             
+    //             move = getBestForwardishMove(playerPieces, opponentPieces, isPlayer1, false);
+    //             if (move != null) moves.add(move);             
+
+                 // choose valid random forwardish to less forward directions as next options
+                 // Can first optimize by looking at only angles you haven't already looked at
+                 // Ideally, would have an improved function [ getBestForwardishMove(), not yet built ] that finds the best move
+                 move = getRandomMove(playerPieces, opponentPieces, isPlayer1, 90);
+                 updateMoveList(playerPieces, move, moves);
+                 move = getRandomMove(playerPieces, opponentPieces, isPlayer1, 180);
+                 updateMoveList(playerPieces, move, moves);             
+
+                 move = getRandomMove(playerPieces, opponentPieces, isPlayer1, 270);
+                 updateMoveList(playerPieces, move, moves);             
+             }
+
+             return moves;
+         }
+         
 }
