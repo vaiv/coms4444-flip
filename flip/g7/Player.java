@@ -35,6 +35,8 @@ public class Player implements flip.sim.Player
 
 	private boolean initialized = false;
 	private HashMap<Point, Integer> loc_to_id = new HashMap<>();
+	private Double wall_location;
+	private Pair<Integer, Point> runner;
 	
 
 
@@ -82,6 +84,7 @@ public class Player implements flip.sim.Player
 
 	private boolean valid(HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, Pair<Integer, Point> move) {
 		boolean valid = true;
+       
 		// check for collisions
         valid = valid && !Board.check_collision(player_pieces, move);
         valid = valid && !Board.check_collision(opponent_pieces, move);
@@ -98,10 +101,23 @@ public class Player implements flip.sim.Player
 			locations.put(opp.x, locations.get(opp.x)+1);
 			if (locations.get(opp.x) == 3){
 				System.out.println("this is an asshole move");
+				wall_location = opp.x;
 				return true;
 			}
 		}
 		return false;
+	}
+	private Pair<Integer, Point> find_hole(HashMap<Integer, Point> opponent_pieces,HashMap<Integer, Point> player_pieces, Integer piece_id, Boolean direction) {
+		Point curr_position = new Point(player_pieces.get(piece_id));
+		Pair<Integer, Point> move = new Pair<Integer, Point>(piece_id, curr_position);	
+		while(Board.check_within_bounds(move)){
+			curr_position.y += direction ? diameter_piece : -diameter_piece;
+			//System.out.println(curr_position.y);
+			if(Board.check_collision(opponent_pieces, move)){
+				return new Pair<Integer, Point>(piece_id,curr_position);
+			}
+		}
+		return null; 
 	}
 
 	private Pair<Integer, Point> fan_out(Point curr_position, double theta, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, Integer player) {
@@ -131,9 +147,9 @@ public class Player implements flip.sim.Player
 	}
 
 	private List<Pair<Integer, Point>> main_strat(Integer num_moves, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, boolean isplayer1) {
-		List<Pair<Integer, Point>> moves = new ArrayList<Pair<Integer, Point>>();
 		List<Pair<Integer, Point>> possible_moves = new ArrayList<Pair<Integer, Point>>();
 		List<Integer> player_list = new ArrayList<>(player_pieces.keySet());
+		Collections.shuffle(player_list);
 		Collections.sort(player_list, new Comparator<Integer>(){
 			@Override
 			public int compare(Integer pt1, Integer pt2) {
@@ -149,11 +165,11 @@ public class Player implements flip.sim.Player
 	}
 
 	private List<Pair<Integer, Point>> runner_strat(Integer num_moves, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, boolean isplayer1) {
-		List<Pair<Integer, Point>> moves = new ArrayList<Pair<Integer, Point>>();
+		System.out.println("runner");
 		List<Pair<Integer, Point>> possible_moves = new ArrayList<Pair<Integer, Point>>();
-		List<Integer> player_list = new ArrayList<>(player_pieces.keySet());
+		//List<Integer> player_list = new ArrayList<>(player_pieces.keySet());
 
-		Pair<Integer, Point> runner = new Pair(0, player_pieces.get(0));
+		runner = new Pair(0, player_pieces.get(0));
 		for(Integer id : player_pieces.keySet()){
 			Point op = player_pieces.get(id);
 			boolean closer = isplayer1 ? op.x < runner.getValue().x : op.x > runner.getValue().x;
@@ -166,7 +182,6 @@ public class Player implements flip.sim.Player
 			double theta = 0;
 			Point curr_position = runner.getValue(); 
 			Integer player = runner.getKey(); 
-			// want more than one move here; 
 			for (int i = 0; i < num_moves; i++){
 				Pair<Integer, Point> move = fan_out(curr_position, theta, player_pieces, opponent_pieces, player);
 				curr_position = move.getValue();
@@ -175,6 +190,12 @@ public class Player implements flip.sim.Player
 			return(possible_moves);
 				
 		}
+		//remove the runner from player_list
+		final Pair<Integer, Point> run = runner;
+		//player_pieces.entrySet().removeIf(e -> player_pieces.containsKey(run.getKey()));
+		//Set<Integer> withoutRunner = new HashSet(player_pieces.keySet());
+		List<Integer> player_list = new ArrayList<>(player_pieces.keySet());
+		player_list.remove(run.getKey());
 		Collections.shuffle(player_list);		
 		Collections.sort(player_list, new Comparator<Integer>(){
 			@Override
@@ -192,8 +213,22 @@ public class Player implements flip.sim.Player
 
 
 	private List<Pair<Integer, Point>> block_strat(Integer num_moves, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, boolean isplayer1) {
-		
+		//send runner to wall_location
+		Point curr_position = player_pieces.get(runner.getKey()); 
+		List<Pair<Integer, Point>> possible_moves = new ArrayList<>();
+		boolean at_wall = isplayer1 ? curr_position.x < wall_location : curr_position.x > wall_location;
+		if(!at_wall){
+			double theta = 0;
+			Integer player = runner.getKey(); 
+			for (int i = 0; i < num_moves; i++){
+				Pair<Integer, Point> move = fan_out(curr_position, theta, player_pieces, opponent_pieces, player);
+				curr_position = move.getValue();
+				possible_moves.add(move);
+			}
+			return(possible_moves);	
+		}
 		List<Integer> player_list = new ArrayList<>(player_pieces.keySet());
+		Collections.shuffle(player_list);
 		Collections.sort(player_list, new Comparator<Integer>(){
 			@Override
 			public int compare(Integer pt1, Integer pt2) {
@@ -201,7 +236,7 @@ public class Player implements flip.sim.Player
 				return (int)(lookForward(player_pieces, opponent_pieces, pt1, isplayer1)-lookForward(player_pieces, opponent_pieces, pt2, isplayer1));
 			}
 		});
-		List<Pair<Integer, Point>> possible_moves = getPossibleMoves(player_pieces, opponent_pieces, isplayer1, player_list);
+		possible_moves = getPossibleMoves(player_pieces, opponent_pieces, isplayer1, player_list);
 		if (possible_moves.size() < num_moves) {
 			possible_moves = getUnStuck(player_pieces, opponent_pieces, isplayer1, player_list);
 		}
@@ -215,50 +250,89 @@ public class Player implements flip.sim.Player
 			if (farEnough(player_pieces, opponent_pieces, player)) {
 				continue; 
 			}
+			
 			double theta = 0;
 			Point curr_position = player_pieces.get(player);
 			Pair<Integer, Point> move = fan_out(curr_position, theta, player_pieces, opponent_pieces, player);
-			if(move!=null) possible_moves.add(move);
+			if(move!=null){
+				possible_moves.add(move);
+			}
+			else{
+				//possible_moves = getUnStuck(player_pieces, opponent_pieces, isplayer1, player_list);
+			}
 		 }
+		
 		
 		return possible_moves;
 	}
-	private List<Pair<Integer, Point>> getUnStuck( HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, boolean isplayer1, List<Integer> player_list){
-		List<Pair<Integer, Point>> possible_moves = new ArrayList<Pair<Integer, Point>>();
-		double stop_angle = Math.PI*2; 
-		for(int player : player_list){
-			if (farEnough(player_pieces, opponent_pieces, player)) {
-				continue; 
-			}
-			double theta = 0;
-			Point curr_position = player_pieces.get(player);
-			Pair<Integer, Point> move = new Pair<Integer, Point>(player,curr_position);
-			do {
-				Point new_position = new Point(curr_position);
-				double delta_x = diameter_piece * Math.cos(theta);
-				double delta_y = diameter_piece * Math.sin(theta);
+	// private List<Pair<Integer, Point>> getUnStuck( HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, boolean isplayer1, List<Integer> player_list){
+	// 	System.out.println("stuck");
+	// 	List<Pair<Integer, Point>> possible_moves = new ArrayList<Pair<Integer, Point>>();
+	// 	double stop_angle = Math.PI; 
+	// 	for(int player : player_list){
+	// 		if (farEnough(player_pieces, opponent_pieces, player)) {
+	// 			continue; 
+	// 		}
+	// 		// currently only looking upwards
+	// 		Pair<Integer, Point> potential_move = find_hole(opponent_pieces, player_pieces, player, true);
+	// 		if(potential_move!= null){
+	// 			Point hole = potential_move.getValue(); 
+	// 			double closest_dist = Double.MAX_VALUE; 
+	// 			int closest_player = player; 
+	// 			for (int option : player_list){
+	// 				Point place = player_pieces.get(option); 
+	// 				double dist = Math.sqrt(Math.pow(place.x - hole.x,2) - Math.pow(place.y - hole.y,2)); 
+	// 				if (dist < closest_dist){
+	// 					closest_dist = dist; 
+	// 					closest_player = option; 
+	// 				}
+	// 			}
+	// 			// we need to find a move for the player:
+	// 			// we are gonna want this to be in a loop 
+	// 			double theta = player_pieces.get(closest_player).y < hole.y ? Math.PI/2 : -Math.PI/2;
+	// 			Pair<Integer, Point> move = fan_out(player_pieces.get(closest_player), theta, player_pieces, opponent_pieces, closest_player);
+	// 			boolean over_line = isplayer1 ? player_pieces.get(closest_player).x < -21 : player_pieces.get(closest_player).x > 21;
+	// 			if (over_line && !Board.check_collision(player_pieces, move)) {
+	// 				continue;
+	// 			}
+	// 			System.out.println("HI");
+	// 			possible_moves.add(move);
+	// 		}
+	// 		else{
+	// 			// if we can't find a hole 
+	// 			double theta = 0;
+	// 			Point curr_position = player_pieces.get(player);
+	// 			Pair<Integer, Point> move = new Pair<Integer, Point>(player,curr_position);
+	// 			do {
+	// 				Point new_position = new Point(curr_position);
+	// 				double delta_x = diameter_piece * Math.cos(theta);
+	// 				double delta_y = diameter_piece * Math.sin(theta);
 
-				new_position.x = isplayer1 ? new_position.x - delta_x : new_position.x + delta_x;
-				new_position.y += delta_y;
+	// 				new_position.x = isplayer1 ? new_position.x - delta_x : new_position.x + delta_x;
+	// 				new_position.y += delta_y;
 
-				move = new Pair<Integer, Point>(player, new_position);
-				
-				theta = theta + random.nextDouble()*Math.PI; 
-				
-				if (check_validity(move, player_pieces, opponent_pieces)){
-					boolean over_line = isplayer1 ? curr_position.x < -20 : curr_position.x > 20;
-					if (over_line && !Board.check_collision(player_pieces, move)) {
-						continue;
-					}
-					possible_moves.add(move);
-				}
-				
-			}
-			while(Math.abs(theta) < stop_angle); 
-		 }
+	// 				move = new Pair<Integer, Point>(player, new_position);
+	// 				theta = theta > 0 ? -theta : -theta + random.nextDouble()*Math.PI; 
+	// 				//theta = theta + random.nextDouble()*Math.PI; 
+					
+	// 				if (check_validity(move, player_pieces, opponent_pieces)){
+	// 					boolean over_line = isplayer1 ? curr_position.x < -21 : curr_position.x > 21;
+	// 					if (over_line && !Board.check_collision(player_pieces, move)) {
+	// 						continue;
+	// 					}
+	// 					System.out.println("HELLO");
+	// 					possible_moves.add(move);
+	// 					//break;
+	// 				}
+					
+	// 			}
+	// 			while(Math.abs(theta) < stop_angle); 
+	// 		}
+			
+	// 	 }
 		
-		return possible_moves;
-	}
+	// 	return possible_moves;
+	// }
 
 
 	public List<Pair<Integer, Point>> getMoves(Integer num_moves, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, boolean isplayer1)
@@ -269,6 +343,7 @@ public class Player implements flip.sim.Player
 		}
 		else{ //send a runner:
 			if(check_asshole(opponent_pieces)){
+				System.out.println("asshole");
 				if (!initialized) {
 					for (int i = 0; i < player_pieces.size(); i++){
 						loc_to_id.put(opponent_pieces.get(i), -i);
