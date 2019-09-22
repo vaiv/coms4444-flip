@@ -71,7 +71,7 @@ class SuperSmallNStrategy {
 			// Select an angle of turn that changes from 0 deg to 100 deg
 			double theta = ((random.nextDouble() > 0.5)? -1 : 1) * trial_num * 0.5 * Math.PI / 180.0;
 			double dx = Math.cos(theta) * (isPlayer1? -1 : 1) * diameter_piece;  // move on x-direction
-			double dy = Math.sin(theta) * diameter_piece;  // move on y-directio
+			double dy = Math.sin(theta) * diameter_piece;  // move on y-direction
 			Point newPosition = new Point(oldPosition.x + dx, oldPosition.y + dy);
 			Pair<Integer,Point> move = new Pair<Integer,Point>(pair.getKey(), newPosition);
 			if (Utilities.check_validity(move, playerPieces, opponentPieces)) {
