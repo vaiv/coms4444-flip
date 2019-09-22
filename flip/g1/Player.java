@@ -9,9 +9,11 @@ import flip.sim.Point;
 import flip.sim.Board;
 import flip.sim.Log;
 
+import flip.g1.Hungarian;
+
 
 public class Player implements flip.sim.Player {
-    private int seed = 42;
+    private int seed = 99;
     private Random random;
     private boolean isplayer1;
     private Integer n;
@@ -30,6 +32,16 @@ public class Player implements flip.sim.Player {
     private Double same_y_diff = 3.5;
     private Integer dis_to_move_head = 6;
 
+    // Wall stuff
+    private int[] wallMatching;
+    private double wallX;
+    double[] wallPointCenters11 = {
+            -17.268, -13.804, -10.34, -6.876, -3.412, 0.052, 3.516, 6.98, 10.444, 13.908, 17.372
+    };
+    boolean[] coinsSet = new boolean[11];
+
+    private HashMap<Integer, Point> pieces;
+
 
     private enum State {
         INITIAL_STATE,
@@ -42,9 +54,7 @@ public class Player implements flip.sim.Player {
         IN_GAP,
         STUCK,
         RANDOM
-    }
-
-    ;
+    };
 
     private State currentState = State.INITIAL_STATE;
 
@@ -61,12 +71,29 @@ public class Player implements flip.sim.Player {
         this.isplayer1 = isplayer1;
         this.sign = isplayer1 ? -1 : 1;
         this.diameter_piece = diameter_piece;
+        this.pieces = pieces;
+        this.wallX = -sign * 20.0;
+        this.calculateMatching();
+    }
+
+    public void calculateMatching() {
+        if(n < 11) {
+            throw new Error("Can't build a wall with less than 11 pieces");
+        }
+        double[][] costMatrix = new double[11][n];
+        for (int i = 0; i < 11; i++) {
+            for (int j = 0; j < n; j++) {
+                Point coin = pieces.get(j);
+                Point wallPoint = new Point(wallX, wallPointCenters11[i]);
+                costMatrix[i][j] = getDistance(coin, wallPoint);
+            }
+        }
+        Hungarian hg = new Hungarian(costMatrix);
+        this.wallMatching = hg.execute();
     }
 
     public List<Pair<Integer, Point>> getMoves(Integer num_moves, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, boolean isplayer1) {
-        Log.log("PREV STATE: " + currentState.toString());
         updateState(num_moves, player_pieces, opponent_pieces);
-        Log.log("CURRENT STATE: " + currentState.toString());
 
         List<Pair<Integer, Point>> moves = new ArrayList<Pair<Integer, Point>>();
 
@@ -127,7 +154,7 @@ public class Player implements flip.sim.Player {
     }
 
     public boolean checkIfWallStrategyShouldBeUsed() {
-        return false;
+        return n >= 12;
     }
 
     public boolean checkIfWallFlipCanBeDone() {
@@ -156,10 +183,6 @@ public class Player implements flip.sim.Player {
         }
         return false;
     }
-
-    double[] wallPointCenters11 = {
-            -17.268, -13.804, -10.34, -6.876, -3.412, 0.052, 3.516, 6.98, 10.444, 13.908, 17.372
-    };
 
     public List<Pair<Integer, Point>> getGapFindMoves(
             List<Pair<Integer, Point>> moves,
@@ -211,24 +234,14 @@ public class Player implements flip.sim.Player {
             HashMap<Integer, Point> player_pieces,
             HashMap<Integer, Point> opponent_pieces
     ) {
-        double wallX = -sign * 20;
-        int[] coinsConnections = new int[11];
-        Stack<Integer> usedCoins = new Stack<Integer>();
-        for (int i = 0; i < 11; i++) {
-            double y = wallPointCenters11[i];
-            Pair<Integer, Double> coinDistancePair = findClosesPoint(player_pieces, wallX, y, usedCoins);
-            Integer coin = coinDistancePair.getKey();
-            Double coinDistance = coinDistancePair.getValue();
-            usedCoins.add(coin);
-            coinsConnections[i] = coin;
-        }
-        boolean[] coinsSet = new boolean[11];
-        for (int i = 0; i < coinsSet.length; i++) {
-            if (coinsSet[i]) {
+        Integer[] coinPriority = getWallCoinPriorityByDistance(opponent_pieces);
+        for (int i = 0; i < coinPriority.length; i++) {
+            int coinIndex = coinPriority[i];
+            if (coinsSet[coinIndex]) {
                 continue;
             }
-            int coin = coinsConnections[i];
-            double y = wallPointCenters11[i];
+            int coin = wallMatching[coinIndex];
+            double y = wallPointCenters11[coinIndex];
             Point wallPiece = new Point(wallX, y);
             Point myPiece = player_pieces.get(coin);
             moves = findMovesToPoint(
@@ -242,6 +255,57 @@ public class Player implements flip.sim.Player {
             currentState = State.WALL_BUILT;
         }
         return moves;
+    }
+
+    private Integer[] getWallCoinPriority(HashMap<Integer, Point> pieces) {
+        double densityDelta = 3.0;
+        Integer[] laneCounts = new Integer[11];
+        for (int i = 0; i < 11; i++) {
+            laneCounts[i] = 0;
+        }
+        for (int i = 0; i < 11; i++) {
+            double wallY = wallPointCenters11[i];
+            for(Point oponentCoin: pieces.values()) {
+                if((oponentCoin.y > (wallY - densityDelta)) && (oponentCoin.y < (wallY + densityDelta))) {
+                    laneCounts[i]++;
+                }
+            }
+        }
+        ArrayIndexComparator comparator = new ArrayIndexComparator(laneCounts);
+        Integer[] indices = comparator.createIndexArray();
+        Arrays.sort(indices, comparator);
+        for(int i = 0; i < indices.length / 2; i++) {
+            int temp = indices[i];
+            indices[i] = indices[indices.length - i - 1];
+            indices[indices.length - i - 1] = temp;
+        }
+        return indices;
+    }
+
+    private Integer[] getWallCoinPriorityByDistance(HashMap<Integer, Point> pieces) {
+        double densityDelta = 3.0;
+        Double[] laneCounts = new Double[11];
+        for (int i = 0; i < 11; i++) {
+            laneCounts[i] = 200.0;
+        }
+        for (int i = 0; i < 11; i++) {
+            double wallY = wallPointCenters11[i];
+            for(Point oponentCoin: pieces.values()) {
+                double distance = getDistance(oponentCoin, new Point(wallX, wallY));
+                if(distance < laneCounts[i]) {
+                    laneCounts[i] = distance;
+                }
+            }
+        }
+        ArrayIndexDoubleComparator comparator = new ArrayIndexDoubleComparator(laneCounts);
+        Integer[] indices = comparator.createIndexArray();
+        Arrays.sort(indices, comparator);
+//        for(int i = 0; i < indices.length / 2; i++) {
+//            int temp = indices[i];
+//            indices[i] = indices[indices.length - i - 1];
+//            indices[indices.length - i - 1] = temp;
+//        }
+        return indices;
     }
 
     private Pair<Integer, Double> findClosesPoint(
@@ -298,6 +362,7 @@ public class Player implements flip.sim.Player {
 
             if (check_validity(move, playerPieces, opponentPieces)) {
                 moves.add(move);
+                playerPieces.replace(coin, move.getValue());
 
                 Pair<Integer, Point> move2 = new Pair<Integer, Point>(coin, new Point(goal.x, goal.y));
                 if (check_validity(move2, playerPieces, opponentPieces))
@@ -306,6 +371,7 @@ public class Player implements flip.sim.Player {
                 move = new Pair<Integer, Point>(coin, new Point(x1 - x2, y1 - y2));
                 if (check_validity(move, playerPieces, opponentPieces)) {
                     moves.add(move);
+                    playerPieces.replace(coin, move.getValue());
 
                     Pair<Integer, Point> move2 = new Pair<Integer, Point>(coin, new Point(goal.x, goal.y));
                     if (check_validity(move2, playerPieces, opponentPieces))
@@ -318,13 +384,15 @@ public class Player implements flip.sim.Player {
 
             if (check_validity(move, playerPieces, opponentPieces)) {
                 moves.add(move);
+                playerPieces.replace(coin, start2);
 
                 if (distance > diameter_piece * 3 && moves.size() == 1) {
                     Point start3 = getPointInDirection(start2, goal);
-                    Pair<Integer, Point> move2 = new Pair<Integer, Point>(coin, start3);
+                    Pair<Integer, Point> move4 = new Pair<Integer, Point>(coin, start3);
 
-                    if (check_validity(move2, playerPieces, opponentPieces))
-                        moves.add(move2);
+                    if (check_validity(move4, playerPieces, opponentPieces)) {
+                        moves.add(move4);
+                    }
                 }
             }
         }
@@ -420,6 +488,9 @@ public class Player implements flip.sim.Player {
         while (moves.size() != num_moves && i < num_trials) {
 
             Integer piece_id = random.nextInt(n);
+
+            if(Arrays.stream(wallMatching).anyMatch(x -> x == piece_id))
+                continue;
 
             Point curr_position = player_pieces.get(piece_id);
             if (((isplayer1 && curr_position.x < -threshold)
@@ -555,3 +626,56 @@ public class Player implements flip.sim.Player {
 
 }
 
+class ArrayIndexComparator implements Comparator<Integer>
+{
+    private final Integer[] array;
+
+    public ArrayIndexComparator(Integer[] array)
+    {
+        this.array = array;
+    }
+
+    public Integer[] createIndexArray()
+    {
+        Integer[] indexes = new Integer[array.length];
+        for (int i = 0; i < array.length; i++)
+        {
+            indexes[i] = i; // Autoboxing
+        }
+        return indexes;
+    }
+
+    @Override
+    public int compare(Integer index1, Integer index2)
+    {
+        // Autounbox from Integer to int to use as array indexes
+        return array[index1].compareTo(array[index2]);
+    }
+}
+
+class ArrayIndexDoubleComparator implements Comparator<Integer>
+{
+    private final Double[] array;
+
+    public ArrayIndexDoubleComparator(Double[] array)
+    {
+        this.array = array;
+    }
+
+    public Integer[] createIndexArray()
+    {
+        Integer[] indexes = new Integer[array.length];
+        for (int i = 0; i < array.length; i++)
+        {
+            indexes[i] = i; // Autoboxing
+        }
+        return indexes;
+    }
+
+    @Override
+    public int compare(Integer index1, Integer index2)
+    {
+        // Autounbox from Integer to int to use as array indexes
+        return array[index1].compareTo(array[index2]);
+    }
+}
