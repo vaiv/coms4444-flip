@@ -102,6 +102,8 @@ public class Player implements flip.sim.Player
 
         // Priority 3: Runner+Wall+AntiWall Strategy
         else {
+            this.mAntiWallStrategy.updateStatus();
+            
             // Runner needs to pass the wall first
             if(this.mRunnerStrategy.status==RunnerStatus.RUNNER_SET){
                 try {
