@@ -5,6 +5,7 @@ import java.util.PriorityQueue;
 import java.util.Comparator;
 import java.util.Collections;
 import java.util.Random;
+import java.util.Map;
 import java.util.HashMap;
 import javafx.util.Pair; 
 import java.util.ArrayList;
@@ -65,15 +66,15 @@ class SuperSmallNStrategy {
 	
 	private Pair<Integer,Point> moveForward(HashMap<Integer,Point> playerPieces, HashMap<Integer,Point> opponentPieces, boolean isPlayer1) {
 		// Move a piece as forward as possible
-		Pair<Integer,Point> pair = playerPieces.get(0);  // there is only one piece
-		Point oldPosition = pair.getValue();  // the original position of the piece
+		Point oldPosition = playerPieces.get(0);  // get the original position of the (only) piece
+		double diameter_piece = 2.0;  // diameter of each piece
 		for (int trial_num = 0; trial_num < 200; trial_num++) {
 			// Select an angle of turn that changes from 0 deg to 100 deg
 			double theta = ((random.nextDouble() > 0.5)? -1 : 1) * trial_num * 0.5 * Math.PI / 180.0;
 			double dx = Math.cos(theta) * (isPlayer1? -1 : 1) * diameter_piece;  // move on x-direction
 			double dy = Math.sin(theta) * diameter_piece;  // move on y-direction
 			Point newPosition = new Point(oldPosition.x + dx, oldPosition.y + dy);
-			Pair<Integer,Point> move = new Pair<Integer,Point>(pair.getKey(), newPosition);
+			Pair<Integer,Point> move = new Pair<Integer,Point>(0, newPosition);
 			if (Utilities.check_validity(move, playerPieces, opponentPieces)) {
 				return move;  // return the move if it is valid
 			}
@@ -95,12 +96,11 @@ class SuperSmallNStrategy {
 		// Use moveForward directly for the very first move
 		List<Pair<Integer,Point>> moves = new ArrayList<Pair<Integer,Point>>();  // create a list of moves
 		HashMap<Integer,Point> sandbox = duplicate(playerPieces);  // create a "sandbox" for evaluating moves
-		Pair<Integer,Point> pair = playerPieces.get(0);  // there is only one piece
-		Point oldPosition = pair.getValue();  // the original position of the piece
+		Point oldPosition = playerPieces.get(0);  // get the original position of the (only) piece
 		Pair<Integer,Point> move1 = moveForward(sandbox, opponentPieces, isPlayer1);  // first move in the sandbox
-		sandbox.put(pair.getKey(), move1.getValue());
+		sandbox.put(0, move1.getValue());
 		Pair<Integer,Point> move2 = moveForward(sandbox, opponentPieces, isPlayer1);  // second move in the sandbox
-		sandbox.put(pair.getKey(), move2.getValue());
+		sandbox.put(0, move2.getValue());
 		//double dy1 = move1.getValue().y - oldPosition.y;  // move on y-direction for the first move
 		double dy2 = move2.getValue().y - oldPosition.y;  // total move on y-direction after the second move
 		if (Math.abs(dy2) <= 2) {
@@ -111,7 +111,7 @@ class SuperSmallNStrategy {
 		}
 		else {
 			// Move on y-direction larger than 2, evaluate the two moves
-			boolean isWinning = winning(sandbox.get(0).getValue(), opponentPieces.get(0).getValue(), isPlayer1, false);
+			boolean isWinning = winning(sandbox.get(0), opponentPieces.get(0), isPlayer1, false);
 			if (isWinning) {
 				// You are winning after the two moves, accept them
 				moves.add(move1);
@@ -120,10 +120,10 @@ class SuperSmallNStrategy {
 			}
 			else {
 				// You are losing after the two moves, refuse to move
-				Pair<Integer,Point> move1 = new Pair<Integer,Point>(pair.getKey(), oldPosition);
-				Pair<Integer,Point> move2 = new Pair<Integer,Point>(pair.getKey(), oldPosition);
-				moves.add(move1);
-				moves.add(move2);
+				Pair<Integer,Point> nmove1 = new Pair<Integer,Point>(0, oldPosition);
+				Pair<Integer,Point> nmove2 = new Pair<Integer,Point>(0, oldPosition);
+				moves.add(nmove1);
+				moves.add(nmove2);
 				return moves;
 			}
 		}
