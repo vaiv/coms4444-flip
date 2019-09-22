@@ -134,9 +134,11 @@ class SuperSmallNStrategy {
 		HashMap<Integer,Point> opponentPieces = this.mPlayer.opponentPieces;
 		boolean isPlayer1 = this.mPlayer.isPlayer1;
 		List<Pair<Integer,Point>> newMoves = move1Piece(playerPieces, opponentPieces, isPlayer1);
-		//while (moves.size() < numMoves) {
-		//}
-		//return newMoves;
+		int movesAdded = 0;
+		while (moves.size() < numMoves) {
+			moves.add(newMoves.get(movesAdded));
+			movesAdded++;
+		}
 		return moves;
 	}
 }
