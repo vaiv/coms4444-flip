@@ -168,6 +168,6 @@ class Utilities{
 
         if (check_validity(move, mPlayer.playerPieces, mPlayer.opponentPieces))
             return move;
-        return null;        
+        return null;
     }
 }
