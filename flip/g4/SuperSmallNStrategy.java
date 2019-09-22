@@ -20,19 +20,19 @@ import flip.g4.Utilities;
 // Abstracted class for wall building
 class SuperSmallNStrategy {
 	private int debugCount = 0;
-    // Store details about the game
-    private Player mPlayer;
+	// Store details about the game
+	private Player mPlayer;
 	public Integer n;
-    public Random random;
-    public Double diameter_piece;
-    public SuperSmallNStrategy(Player mPlayer, HashMap<Integer,Point> pieces) {
+	public Random random;
+	public Double diameter_piece;
+	public SuperSmallNStrategy(Player mPlayer, HashMap<Integer,Point> pieces) {
 		this.n = mPlayer.n;
 		this.mPlayer = mPlayer;
 		this.random  = mPlayer.random;
 		this.diameter_piece = mPlayer.diameter_piece;
-    }
+    	}
 	
-    private int stepsToGoal(Point piece, boolean isPlayer1) {
+    	private int stepsToGoal(Point piece, boolean isPlayer1) {
 		// Returns the number of steps to the finish line for a piece, assuming it always go straight forward
 		double dist;  // distance on x-direction to finish line
 		double diameter_piece = 2.0;  // diameter of each piece
@@ -83,11 +83,11 @@ class SuperSmallNStrategy {
 	
 	public static HashMap<Integer,Point> duplicate(HashMap<Integer,Point> pieces) {
 		// Duplicate (deep copy) a hashmap of pieces
-    	HashMap<Integer,Point> newPieces = new HashMap<Integer,Point>();  // create a new hashmap
-    	for (Map.Entry<Integer,Point> piece : pieces.entrySet()) {
-        	newPieces.put(piece.getKey(), piece.getValue());  // add elements one by one
+		HashMap<Integer,Point> newPieces = new HashMap<Integer,Point>();  // create a new hashmap
+		for (Map.Entry<Integer,Point> piece : pieces.entrySet()) {
+			newPieces.put(piece.getKey(), piece.getValue());  // add elements one by one
 		}
-    	return newPieces;
+		return newPieces;
 	}
 	
 	private List<Pair<Integer,Point>> move1Piece(HashMap<Integer,Point> playerPieces, HashMap<Integer,Point> opponentPieces, boolean isPlayer1) {
@@ -124,9 +124,9 @@ class SuperSmallNStrategy {
 				Pair<Integer,Point> move2 = new Pair<Integer,Point>(pair.getKey(), oldPosition);
 				moves.add(move1);
 				moves.add(move2);
-				return moves
+				return moves;
 			}
-    	}
+		}
 	}
 	
 	public List<Pair<Integer,Point>> getSuperSmallNMove(List<Pair<Integer,Point>> moves, Integer numMoves) {
