@@ -18,27 +18,24 @@ import flip.g4.PieceStore;
 import flip.g4.Utilities;
 
 // Abstracted class for wall building
-class SuperSmallNStrategy{
-    private int debugCount = 0;
+class SuperSmallNStrategy {
+	private int debugCount = 0;
     // Store details about the game
     private Player mPlayer;
-
-    public Integer n;
+	public Integer n;
     public Random random;
     public Double diameter_piece;
-
-    public SuperSmallNStrategy(Player mPlayer, HashMap<Integer, Point> pieces){
-        this.n = mPlayer.n;
-        this.mPlayer = mPlayer;
-        this.random  = mPlayer.random;
-        this.diameter_piece = mPlayer.diameter_piece;
+    public SuperSmallNStrategy(Player mPlayer, HashMap<Integer,Point> pieces) {
+		this.n = mPlayer.n;
+		this.mPlayer = mPlayer;
+		this.random  = mPlayer.random;
+		this.diameter_piece = mPlayer.diameter_piece;
     }
-    
-    private int stepsToGoal(Point piece, boolean isPlayer1)
-	{
-	    // Returns the number of steps to the finish line for a piece, assuming it always go straight forward
+	
+    private int stepsToGoal(Point piece, boolean isPlayer1) {
+		// Returns the number of steps to the finish line for a piece, assuming it always go straight forward
 		double dist;  // distance on x-direction to finish line
-        double diameter_piece = 2.0;  // diameter of each piece
+		double diameter_piece = 2.0;  // diameter of each piece
 		if (isPlayer1) {
 			dist = piece.x + 21.0;  // finish line at x = -21.0, piece moves to the left
 		}
@@ -49,8 +46,7 @@ class SuperSmallNStrategy{
 		return steps;
 	}
 	
-	private boolean winning(Point piece, Point opponentPiece, boolean isPlayer1, boolean moveFirst)
-	{
+	private boolean winning(Point piece, Point opponentPiece, boolean isPlayer1, boolean moveFirst) {
 		// Evaluate if your piece is in a winning or losing position		
 		int steps = stepsToGoal(piece, isPlayer1);  // number of steps to goal for your piece
 		int opponentSteps = stepsToGoal(opponentPiece, !isPlayer1);  // number of pieces to goal for the opponent piece
@@ -67,8 +63,7 @@ class SuperSmallNStrategy{
 		}
 	}
 	
-	private Pair<Integer,Point> moveForward(HashMap<Integer,Point> playerPieces, HashMap<Integer,Point> opponentPieces, boolean isPlayer1)
-	{
+	private Pair<Integer,Point> moveForward(HashMap<Integer,Point> playerPieces, HashMap<Integer,Point> opponentPieces, boolean isPlayer1) {
 		// Move a piece as forward as possible
 		Pair<Integer,Point> pair = playerPieces.get(0);  // there is only one piece
 		Point oldPosition = pair.getValue();  // the original position of the piece
@@ -86,8 +81,7 @@ class SuperSmallNStrategy{
         return null;
     }
 
-	public static HashMap<Integer,Point> duplicate(HashMap<Integer,Point> pieces)
-	{
+	public static HashMap<Integer,Point> duplicate(HashMap<Integer,Point> pieces) {
 		// Duplicate (deep copy) a hashmap of pieces
     	HashMap<Integer,Point> newPieces = new HashMap<Integer,Point>();  // create a new hashmap
     	for (Map.Entry<Integer,Point> piece : pieces.entrySet()) {
@@ -96,8 +90,7 @@ class SuperSmallNStrategy{
     	return newPieces;
 	}
 
-	private List<Pair<Integer,Point>> move1Piece(HashMap<Integer,Point> playerPieces, HashMap<Integer,Point> opponentPieces, boolean isPlayer1)
-	{
+	private List<Pair<Integer,Point>> move1Piece(HashMap<Integer,Point> playerPieces, HashMap<Integer,Point> opponentPieces, boolean isPlayer1) {
 		// Move a piece forward two steps (if not at the beginning)
 		// Use moveForward directly for the very first move
 		List<Pair<Integer,Point>> moves = new ArrayList<Pair<Integer,Point>>();  // create a list of moves
@@ -136,19 +129,14 @@ class SuperSmallNStrategy{
     	}
     }
 
-    public List<Pair<Integer, Point>> getSuperSmallNMove(
-        List<Pair<Integer, Point>> moves, Integer numMoves ) {
-
-            HashMap<Integer, Point> playerPieces = this.mPlayer.playerPieces;
-            HashMap<Integer, Point> opponentPieces = this.mPlayer.opponentPieces;
-            boolean isPlayer1 = this.mPlayer.isPlayer1;
-            
-            List<Pair<Integer,Point>> newMoves = move1Piece(playerPieces, opponentPieces, isPlayer1);
-            while (moves.size() < numMoves) {
-                
-            }
-            //return newMoves;
-            return moves;
-       }
-       
+    public List<Pair<Integer,Point>> getSuperSmallNMove(List<Pair<Integer,Point>> moves, Integer numMoves) {
+		HashMap<Integer,Point> playerPieces = this.mPlayer.playerPieces;
+		HashMap<Integer,Point> opponentPieces = this.mPlayer.opponentPieces;
+		boolean isPlayer1 = this.mPlayer.isPlayer1;
+		List<Pair<Integer,Point>> newMoves = move1Piece(playerPieces, opponentPieces, isPlayer1);
+		//while (moves.size() < numMoves) {
+		//}
+		//return newMoves;
+        return moves;
+	}   
 }
