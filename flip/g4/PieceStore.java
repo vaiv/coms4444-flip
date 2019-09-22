@@ -5,27 +5,49 @@ import javafx.util.Pair;
 
 import flip.sim.Point;
 
-public class PieceStore{
-    private HashMap<Integer, Point> pieceList;
+import flip.g4.Player;
+import flip.g4.Utilities;
 
-    public PieceStore(){}
-    public PieceStore(HashMap<Integer, Point> pieces){
-        this.pieceList = pieces;
+public class PieceStore{
+    public Integer n;
+    public Player mPlayer;
+    public Double diameter;
+    public boolean isPlayer1;
+
+    public HashMap<Integer, Point> myPieces;
+    public HashMap<Integer, Point> oppPieces;
+
+    HashMap<Integer, Pair<Point, Point>> movedPieces;
+
+    public PieceStore(Player mPlayer, HashMap<Integer, Point> pieces){
+        this.n         = mPlayer.n;
+        this.mPlayer   = mPlayer;
+        this.isPlayer1 = mPlayer.isPlayer1;
+        this.diameter  = mPlayer.diameter_piece;
+
+        this.myPieces = mPlayer.playerPieces;
+
+        for(Integer idx: pieces.keySet()){
+            Point loc = pieces.get(idx);
+            this.myPieces.put(idx, new Point(loc));
+            this.oppPieces.put(idx, new Point(loc.x * -1, loc.y));
+        }
     }
 
-    public HashMap<Integer, Pair<Point, Point>> findMovedPieces(
-        HashMap<Integer, Point> pieces){
-        
-        HashMap<Integer, Pair<Point, Point>> movedPieces = new HashMap<>();
+    public void movePiece(Pair<Integer, Point> move){
+        this.myPieces.replace(move.getKey(), move.getValue());
+    }
+
+    public void updatePieces(HashMap<Integer, Point> pieces){
+        this.movedPieces = new HashMap<Integer, Pair<Point, Point>>();
         for(Integer idx: this.pieceList.keySet()){
             Point oldLoc = this.pieceList.get(idx);
             Point newLoc = pieces.get(idx);
 
             if(!oldLoc.equals(newLoc)){
-                movedPieces.put(idx, new Pair<>(oldLoc, newLoc));
+                movedPieces.put(idx, new Pair<Point, Point>(oldLoc, newLoc));
                 this.pieceList.replace(idx, newLoc);
             }
         }
-        return movedPieces;
     }
 }

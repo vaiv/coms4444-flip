@@ -15,14 +15,16 @@ import java.lang.*;
 import flip.sim.Point;
 import flip.sim.Board;
 import flip.sim.Log;
-import flip.g4.HungarianAlgorithm;
-import flip.g4.PieceStore;
+
 import flip.g4.WallStrategy;
 import flip.g4.RunnerStrategy;
+import flip.g4.AntiWallStrategy;
 import flip.g4.SmallNStrategy;
 import flip.g4.SuperSmallNStrategy;
 
 import flip.g4.Utilities;
+import flip.g4.PieceStore;
+import flip.g4.HungarianAlgorithm;
 
 public class Player implements flip.sim.Player
 {
@@ -32,13 +34,20 @@ public class Player implements flip.sim.Player
     public Integer n;
     public Double diameter_piece;
 
+    // Store pieces for easier calculation
+    public PieceStore pieceStore;
+
     // Strategy data structures
     public HashMap<Integer, Point> playerPieces;
     public HashMap<Integer, Point> opponentPieces;
+
+    // Strategy classes
     public WallStrategy   mWallStrategy;
+    public RunnerStrategy mRunnerStrategy;
+    public AntiWallStrategy mAntiWallStrategy;
+
     public SmallNStrategy mSmallNStrategy;
     public SuperSmallNStrategy mSuperSmallNStrategy;
-    public RunnerStrategy mRunnerStrategy;
 
     public Player(){
         random = new Random(seed);
@@ -54,13 +63,14 @@ public class Player implements flip.sim.Player
         this.isPlayer1 = isPlayer1;
         this.diameter_piece = diameter_piece; // default 2
         
-        // wall
-        this.playerPieces  = pieces;
-        this.mWallStrategy = new WallStrategy(this, pieces);
-        Log.log("WALL STRATEGY INITIALIZED");
+        // Piece Storage
+        this.playerPieces = pieces;
+        this.pieceStore   = new PieceStore(this, pieces);
 
-        this.mRunnerStrategy = new RunnerStrategy(this, pieces,
-            this.mWallStrategy.runner);
+        // wall
+        this.mWallStrategy     = new WallStrategy(this, pieces);
+        this.mRunnerStrategy   = new RunnerStrategy(this, pieces, this.mWallStrategy.runner);
+        this.mAntiWallStrategy = new AntiWallStrategy(this, pieces, this.mWallStrategy.runner);
         
         this.mSmallNStrategy = new SmallNStrategy(this, pieces);
         this.mSuperSmallNStrategy = new SuperSmallNStrategy(this, pieces);
@@ -73,6 +83,10 @@ public class Player implements flip.sim.Player
         
         this.playerPieces   = playerPieces;
         this.opponentPieces = opponentPieces;
+
+        // Update the piece store location
+        // The moved pieces can be accessed using pieceStore.movedPieces
+        this.pieceStore.updatePieces(opponentPieces);
 
         List<Pair<Integer, Point>> moves = new ArrayList<Pair<Integer, Point>>();
 
