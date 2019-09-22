@@ -90,8 +90,8 @@ public class Player implements flip.sim.Player
 
         List<Pair<Integer, Point>> moves = new ArrayList<Pair<Integer, Point>>();
 
-        // Priority 1 : N = 1 or N = 2
-        if (playerPieces.size() < 3){
+        // Priority 1 : N = 1
+        if (playerPieces.size() < 2){
             this.mSuperSmallNStrategy.getSuperSmallNMove(moves, numMoves);
         }
         
