@@ -65,7 +65,7 @@ public class Player implements flip.sim.Player
 
 		// Set current wall buidling objective
 		if (!wall_init) {
-			ArrayList<Point> wall = find_wall_points(isplayer1 ? 21 : -21, 1.45, 1.75); // positions for wall
+			ArrayList<Point> wall = wall_points(isplayer1 ? 16.0 : -16.0, 1.35); // positions for wall
 			for (Point point : wall) {
 				Integer id = closest(point, player_pieces, wall_point);
 				piece_to_dest.add(new Pair<Integer, Point>(id, point));
@@ -104,7 +104,7 @@ public class Player implements flip.sim.Player
 			// }
 
 			// System.out.println(min_wall_dist);
-			// if (!ignored_piece.contains(adapive_wall)) 
+			// if (!ignored_piece.contains(adapive_wall))
 			// 	pair = new Pair<Integer, Point>(adapive_wall, wall_point.get(adapive_wall));
 
 			Integer id = pair.getKey();
@@ -117,9 +117,9 @@ public class Player implements flip.sim.Player
 				continue;
 			}
 
-			if (moves.size() >= num_moves || i >= num_trials) 
+			if (moves.size() >= num_moves || i >= num_trials)
 				break;
-			
+
 			Point temp = find_move_exact(player_pieces.get(id), dest, 1); // find the next move
 			Pair<Integer, Point> move = new Pair<Integer, Point>(id, temp);
 			if(check_validity(move, player_pieces, opponent_pieces))
@@ -127,7 +127,7 @@ public class Player implements flip.sim.Player
 			else { // Try move the coin in other direction
 				temp = find_move_exact(player_pieces.get(id), dest, -1);
 				move = new Pair<Integer, Point>(id, temp);
-				if (check_validity(move, player_pieces, opponent_pieces)) 
+				if (check_validity(move, player_pieces, opponent_pieces))
 					moves.add(move);
 				else { // move backwards to make space
 					// TODO: random
@@ -136,7 +136,7 @@ public class Player implements flip.sim.Player
 					move = new Pair<Integer, Point>(id, temp);
 				}
 			}
-			++i;	 
+			++i;
 		}
 
 		if (ignored_piece.size() == wall_point.size()) wall_complete = true;
@@ -207,7 +207,7 @@ public class Player implements flip.sim.Player
 	}
 
 	// Find a valid move that moves a coin exactly to the destination
-	// when there are two possible moves, set choice to -1 will give different result, choice default to 1 
+	// when there are two possible moves, set choice to -1 will give different result, choice default to 1
 	// TODO: more advanced path finding algorithm, avoid obstacles, refractor
 	// WARNING: this function one only works when start and dest are both on the left or right side
 	public Point find_move_exact(Point start, Point dest, int choice) {
@@ -225,7 +225,7 @@ public class Player implements flip.sim.Player
 		if (Board.almostEqual(dist, length)) {
 			result = new Point(dest);
 		}
-		else if (dist <= 2 * length) { 
+		else if (dist <= 2 * length) { // TODO: 2 * length
 			double newX = start.x;
 			double newY = start.y;
 			double vector1_x, vector1_y, vector2_x, vector2_y;
@@ -254,7 +254,7 @@ public class Player implements flip.sim.Player
 	}
 
 	// Find two moves that moves a coin to the destination
-	// public ArrayList<Pair<Integer, Point>> find_two_moves(Point start, Point dest, Integer index, 
+	// public ArrayList<Pair<Integer, Point>> find_two_moves(Point start, Point dest, Integer index,
 	// 	   HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces) {
 	// 	ArrayList<Pair<Integer, Point>> moves = new ArrayList<Pair<Integer, Point>>();
 	// 	Point temp = find_move_exact(start, dest, 1);
@@ -297,7 +297,7 @@ public class Player implements flip.sim.Player
 		double min_distance = Double.MAX_VALUE;
 		Integer result_id = 0;
 		for (int i = 0; i < n; ++i) {
-			if (ignore != null && ignore.contains(i)) 
+			if (ignore != null && ignore.contains(i))
 				continue;
 			Integer id = i;
 			Point p = pieces.get(id);
@@ -305,11 +305,11 @@ public class Player implements flip.sim.Player
 			if (distance < min_distance) {
 				min_distance = distance;
 				result_id = id;
-			} 
+			}
 		}
 		return result_id;
 	}
-	
+
 	// Find a list of points at x axis that can form a vertical wall
 	// spacing is the space between each coin
 	public ArrayList<Point> find_wall_points(double x, double spacing, double start) {
