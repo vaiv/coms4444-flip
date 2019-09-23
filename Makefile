@@ -1,8 +1,10 @@
 run:
-	java flip.sim.Simulator -t 10000 --players random random -n 30 -r 1 -l log.txt
+	java flip.sim.Simulator -t 10000 --players g6 g4 -n 9 -r 100 -l log.txt
 
 gui:
-	java flip.sim.Simulator -t 10000 --players random random -n 30 -r 1 --gui -l log.txt
+	rm flip/*/*.class
+	javac flip/sim/*.java
+	java flip.sim.Simulator -t 200 --players g4 g6 -n 9 -r 5 --gui -l log.txt
 
 compile:
 	javac flip/sim/*.java

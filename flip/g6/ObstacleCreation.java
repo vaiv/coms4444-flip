@@ -293,8 +293,8 @@ public class ObstacleCreation extends Move {
 
 	public void calculateWallPositionsMap(HashMap<Integer, Point> player_pieces) {
 
-		double x1 = this.isplayer1 ? 19.99 : -19.99;
-		double x2 = this.isplayer1 ? 22.01 : -22.01;
+		double x1 = this.isplayer1 ? 20.99 : -20.99;
+		double x2 = this.isplayer1 ? 23.01 : -23.01;
 		
 		wall_pieces = new HashMap<>();
 		wall_pieces_second = new HashMap<>();
