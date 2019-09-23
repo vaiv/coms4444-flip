@@ -17,6 +17,7 @@ class WallStrategy{
     private int debugCount = 0;
     // Store details about the game
     private Player mPlayer;
+    public  PieceStore pieceStore;
 
     // Wall co-ordinates and number of pieces
     public int       numWallPieces;
@@ -37,6 +38,7 @@ class WallStrategy{
 
     public WallStrategy(Player mPlayer, HashMap<Integer, Point> pieces){
         this.mPlayer = mPlayer;
+        this.pieceStore = mPlayer.pieceStore;
         this.numMovesRequired = 0;
         this.calculateWallPositions();
 
@@ -172,20 +174,18 @@ class WallStrategy{
             Integer pieceID = idxPriority[idx];
 
             Pair<Integer, Point> move = Utilities.getNextMove(
-                this.mPlayer.playerPieces.get(this.fastestWallBuilders[pieceID]),
+                this.pieceStore.myPieces.get(this.fastestWallBuilders[pieceID]),
                 this.idealWallLocations[pieceID],
                 this.fastestWallBuilders[pieceID],
-                this.mPlayer.playerPieces,
-                this.mPlayer.opponentPieces
+                this.pieceStore.myPieces,
+                this.pieceStore.oppPieces
             );
 
             if(move != null){
                 moves.add(move);
                 // movesLeft[pieceID]--;
                 this.totalMovesLeft--;
-                this.mPlayer.playerPieces.replace(
-                    this.fastestWallBuilders[pieceID], move.getValue());
-                // TODO: Update player location store
+                this.pieceStore.movePiece(move);
             } else idx++;
         }
 
