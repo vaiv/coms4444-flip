@@ -54,13 +54,16 @@ class AntiWallStrategy{
 
         if(this.status == WallDetectionStatus.WALL_DETECTED ||
             this.status == WallDetectionStatus.WALL_HOLE_DETECTED){
-            this.updateWallGaps();
+            if(this.updateWallGaps())
+                this.status = WallDetectionStatus.WALL_HOLE_DETECTED;
+            else
+                this.status = WallDetectionStatus.WALL_IMPENETRABLE;
         }
     }
 
     private boolean checkWallPiece(Point a, Point b){
         // Simple logic. Just checks number of pieces at location X
-        return Math.abs(a.x-b.x) < 0.2;
+        return Math.abs(a.x-b.x) < 0.5;
     }
 
     public boolean detectWall(){
@@ -83,6 +86,7 @@ class AntiWallStrategy{
             if (numPiecesInRow >= 3){
                 this.status = WallDetectionStatus.WALL_DETECTED;
                 this.detectedXLocation = loc.x;
+                Log.log("WALL DETECTED AT " + String.valueOf(loc.x));
                 return true;
             }
             prev = idx;
@@ -90,7 +94,7 @@ class AntiWallStrategy{
         return false;
     }
 
-    public void updateWallGaps(){
+    public boolean updateWallGaps(){
         List<Point> xLocationCount = new ArrayList<Point>();
 
         Point foundXLoc = new Point(this.detectedXLocation, 0);
@@ -101,69 +105,31 @@ class AntiWallStrategy{
                 xLocationCount.add(oppLoc);
         }
 
-        Integer numWallPieces = xLocationCount.size();
-        if(numWallPieces < 3){
-            this.status = WallDetectionStatus.WALL_NOT_DETECTED;
-            return;
-        }
-
         xLocationCount.sort(Comparator.comparingDouble(loc->loc.x));
-        this.detectedXLocation = xLocationCount.get(numWallPieces/2).x;
+        this.detectedXLocation = xLocationCount.get(xLocationCount.size()/2).x;
 
         xLocationCount.sort(Comparator.comparingDouble(loc->loc.y));
 
-        this.targetBreach = null;
-        Double minMovesRequired = 50.0;
-        Point runnerLocation = this.pieceStore.myPieces.get(this.runner);
-
-        for(int i=0; i<numWallPieces+1; i++){
-            Double a = (i==0) ? -20.0 : xLocationCount.get(i-1).y;
-            Double b = (i==numWallPieces) ? 20.0: xLocationCount.get(i).y;
-
-            if(b - a < 2 * Math.sqrt(3)* 2 - 2) continue;
-            
-            Point targetLocation = new Point(this.detectedXLocation, (a+b)/2);
-            Double numMoves = Utilities.numMoves(
-                runnerLocation,
-                targetLocation
-            );
-
-            if(numMoves < minMovesRequired){
-                minMovesRequired = numMoves;
-                this.targetBreach = targetLocation;
+        Double maxGap = xLocationCount.get(0).y;
+        Double maxGapLocation = xLocationCount.get(0).y / 2;
+        for(int i=1; i<xLocationCount.size(); i++){
+            Double gap = xLocationCount.get(i).y - xLocationCount.get(i-1).y;
+            if (gap > maxGap){
+                maxGap = gap;
+                maxGapLocation = (xLocationCount.get(i).y + xLocationCount.get(i-1).y) / 2;
             }
         }
 
-        if(this.targetBreach == null)
-            this.status = WallDetectionStatus.WALL_IMPENETRABLE;
-        else
-            this.status = WallDetectionStatus.WALL_HOLE_DETECTED;
+        if (maxGap < Math.sqrt(3)) return false;
+
+        this.targetBreach = new Point(this.detectedXLocation, maxGapLocation);
+        return true;
     }
 
     public List<Pair<Integer,Point>> getAntiWallMove(
         List<Pair<Integer,Point>> moves, Integer numMoves){
         
-        while(moves.size() < numMoves){
-            Pair<Integer, Point> move = Utilities.getNextMove(
-                this.pieceStore.myPieces.get(this.runner),
-                this.targetBreach,
-                this.runner,
-                this.pieceStore.myPieces,
-                this.pieceStore.oppPieces
-            );
-
-            if(move != null){
-                moves.add(move);
-                this.pieceStore.movePiece(move);
-
-                if(move.getValue().x == this.targetBreach.x){
-                    this.status = WallDetectionStatus.WALL_BREACHED;
-                }
-            } else{
-                break;
-            }
-        }
-
+        
 		return moves;
 	}
 }
