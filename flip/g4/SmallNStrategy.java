@@ -1,3 +1,4 @@
+// UPDATED WITH N/3 STRAT
 package flip.g4;
 
 import java.util.List;
@@ -279,6 +280,38 @@ class SmallNStrategy{
         return null;        
     }
 
+    private Pair<Integer, Point> getNewForwardPieceMove( HashMap<Integer, Point> playerPieces, HashMap<Integer, Point> opponentPieces, boolean isPlayer1 ) {
+            // get all our pieces from closest to farthest
+    //        List<Pair<Integer,Point>> orderedXProgress = isFront? rankXProgressOutsideEndzone(playerPieces, isPlayer1):
+    //                                                                            rankXProgress(playerPieces, isPlayer1);
+
+    //          ORIGINAL
+        List<Pair<Integer,Point>>         orderedXProgress = rankXProgressOutsideEndzone(playerPieces, isPlayer1);
+        if (orderedXProgress.size() == 0 || Math.random() < 0.1) orderedXProgress = rankXProgress(playerPieces, isPlayer1);
+
+        for (int angle = 0; angle < 180; angle++) {
+            // choose random direction
+            double theta = ((random.nextDouble() > 0.5)? -1 : 1) *angle *Math.PI/180;
+            double dx = Math.cos(theta) * (isPlayer1? -1 : 1) * diameter_piece, dy = Math.sin(theta) * diameter_piece;
+
+            for (int i = 0; i < orderedXProgress.size() - 1; i++) {
+                Pair<Integer,Point> pair = orderedXProgress.get(i);
+                Point oldPosition = pair.getValue();
+                
+                // start by checking random direction
+                Point newPosition = new Point(oldPosition.x + dx, oldPosition.y + dy);
+                Pair<Integer,Point> move = new Pair<Integer,Point>(pair.getKey(), newPosition);
+                if (Utilities.check_validity(move, playerPieces, opponentPieces)) return move;
+
+                // checking opposite direction (but with same angle)
+                newPosition = new Point(oldPosition.x + dx, oldPosition.y - dy);
+                move = new Pair<Integer,Point>(pair.getKey(), newPosition);
+                if (Utilities.check_validity(move, playerPieces, opponentPieces)) return move;
+            }
+        }
+
+        return null;        
+    }
 
     private Pair<Integer, Point> getRandomMove( HashMap<Integer, Point> playerPieces, HashMap<Integer, Point> opponentPieces, boolean isPlayer1, double spread ) {
         int MAX_TRIALS = 100;
@@ -332,7 +365,11 @@ class SmallNStrategy{
 
             while (moves.size() < numMoves) {
                 Pair<Integer, Point> move = null;
-                
+                while (rankXProgressOutsideEndzone(playerPieces, isPlayer1).size() > n - n/3) { //n - n/3
+                    //System.out.println("here!");
+                    move = getNewForwardPieceMove(playerPieces, opponentPieces, isPlayer1);
+                    updateMoveList(playerPieces, move, moves);
+                }
                 move = getBackwardPieceMove(playerPieces, opponentPieces, isPlayer1);
                 updateMoveList(playerPieces, move, moves);
                 
