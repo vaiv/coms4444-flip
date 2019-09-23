@@ -24,7 +24,12 @@ public class ObstacleAvoidance extends Move {
 		this.diameter_piece = diameter_piece;
 	}
 
-
+	@Override
+	public void updatePieceInfo(HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces) {
+		this.player_pieces = player_pieces;
+		this.opponent_pieces = opponent_pieces;
+	}
+	
 	@Override
 	public boolean isPossible() {
 		return false; // TODO: Change this implementation
