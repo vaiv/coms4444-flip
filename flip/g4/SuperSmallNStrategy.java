@@ -43,6 +43,7 @@ class SuperSmallNStrategy {
 		else {
 			dist = 21.0 - piece.x;  // finish line at x = 21.0, piece moves to the right
 		}
+		//System.out.println("Distance to goal: " + dist);
 		int steps = (int) Math.floor(dist / diameter_piece) + 1;
 		return steps;
 	}
@@ -51,8 +52,10 @@ class SuperSmallNStrategy {
 		// Evaluate if your piece is in a winning or losing position
 		int steps = stepsToGoal(piece, isPlayer1);  // number of steps to goal for your piece
 		int opponentSteps = stepsToGoal(opponentPiece, !isPlayer1);  // number of pieces to goal for the opponent piece
-		int rounds = steps / 2 + 1;  // number of rounds to goal for your piece (move 2 steps in each round)
-		int opponentRounds = opponentSteps / 2 + 1;  // number of rounds to goal for the opponent piece
+		int rounds = (steps + 1) / 2;  // number of rounds to goal for your piece (move 2 steps in each round)
+		int opponentRounds = (opponentSteps + 1) / 2;  // number of rounds to goal for the opponent piece
+		//System.out.println("Player needs " + rounds + " steps to goal.");
+		//System.out.println("Opponent needs " + opponentRounds + " steps to goal.");
 		if (rounds < opponentRounds) {
 			return true;  // you need fewer rounds to reach the goal, so you are winning
 		}
@@ -103,23 +106,33 @@ class SuperSmallNStrategy {
 		sandbox.put(0, move2.getValue());
 		//double dy1 = move1.getValue().y - oldPosition.y;  // move on y-direction for the first move
 		double dy2 = move2.getValue().y - oldPosition.y;  // total move on y-direction after the second move
-		if (Math.abs(dy2) <= 2) {
+		if (Math.abs(dy2) <= 1) {
 			// Move on y-direction less than 2, accept the two moves
+			//if (Math.abs(dy2) > 0) {
+			//	System.out.println("Start at: " + oldPosition.x + ", " + oldPosition.y);
+			//	System.out.println("End at: " + move2.getValue().x + ", " + move2.getValue().y);
+			//	System.out.println("y-direction move: " + dy2);
+			//}
 			moves.add(move1);
 			moves.add(move2);
 			return moves;
 		}
 		else {
 			// Move on y-direction larger than 2, evaluate the two moves
-			boolean isWinning = winning(sandbox.get(0), opponentPieces.get(0), isPlayer1, false);
+			//System.out.println("Start at: " + oldPosition.x + ", " + oldPosition.y);
+			//System.out.println("End at: " + move2.getValue().x + ", " + move2.getValue().y);
+			//System.out.println("y-direction move: " + dy2);
+			boolean isWinning = winning(move2.getValue(), opponentPieces.get(0), isPlayer1, false);
 			if (isWinning) {
 				// You are winning after the two moves, accept them
+				//System.out.println("Player is winning.");
 				moves.add(move1);
 				moves.add(move2);
 				return moves;
 			}
 			else {
 				// You are losing after the two moves, refuse to move
+				//System.out.println("Player is losing and refuses to move.");
 				Pair<Integer,Point> nmove1 = new Pair<Integer,Point>(0, oldPosition);
 				Pair<Integer,Point> nmove2 = new Pair<Integer,Point>(0, oldPosition);
 				moves.add(nmove1);
