@@ -21,7 +21,7 @@ public class ObstacleCreation extends Move {
 
 	// Wall point positions
 	private static final double EPSILON = 0.001;
-	private static final List<Double> WALL_POSITION_X = new ArrayList<>(Arrays.asList(-17.30, -13.84, -10.83, -6.92, -3.46, 0.00, 3.46, 6.92, 10.83, 13.84, 17.30));
+	private static final List<Double> WALL_POSITION_Y = new ArrayList<>(Arrays.asList(-17.30, -13.84, -10.38, -6.92, -3.46, 0.00, 3.46, 6.92, 10.38, 13.84, 17.30));
 	private ArrayList<Point> wall_pos_list = new ArrayList<Point>();  
 	private ArrayList<Point> wall_pos_list_second = new ArrayList<Point>();  
 	private HashMap<Integer, Point> wall_pieces = new HashMap<Integer, Point>();
@@ -45,61 +45,59 @@ public class ObstacleCreation extends Move {
 		calculateWallPositionsMap(player_pieces);		
 		List<Pair<Integer, Point>> possMoves = buildWall(player_pieces, opponent_pieces, wall_pieces);
 		if(possMoves.size() != 0) {
-			HashMap<Integer, Point> unfinished_pieces = getUnfinishedPlayerPieces(opponent_pieces, !isplayer1, Approach.AGGRESSIVE);
-			HashMap<Integer, Point> closest_unfinished_pieces = getClosestPointsToOpponentBoundary(1, unfinished_pieces, !isplayer1);
-			if(closest_unfinished_pieces.size() != 0) {
-				for(Integer id : closest_unfinished_pieces.keySet()) {
-					int possMoveID = -1;
-					double distanceY = 10000000;
-					int index = -1;
-					for(int i = 0; i < possMoves.size(); i++) {
-						Pair<Integer, Point> pair = possMoves.get(i);
-						double newDistanceY = Math.sqrt(Math.pow(pair.getValue().y - closest_unfinished_pieces.get(id).y, 2));
-						if(newDistanceY < distanceY) {
-							possMoveID = pair.getKey();
-							distanceY = newDistanceY;
-							index = i;
-						}
-					}
-					return possMoves.get(index);
-				}
-			}
-			else {
-				Random random = new Random();
-				Integer piece_id = random.nextInt(possMoves.size());
-				return possMoves.get(piece_id);
-			}
-		}
-		else {
-			possMoves = buildWall(player_pieces, opponent_pieces, wall_pieces_second);
-			if(possMoves.size() != 0) {
-				HashMap<Integer, Point> unfinished_pieces = getUnfinishedPlayerPieces(opponent_pieces, !isplayer1, Approach.AGGRESSIVE);
-				HashMap<Integer, Point> closest_unfinished_pieces = getClosestPointsToOpponentBoundary(1, unfinished_pieces, !isplayer1);
-				if(closest_unfinished_pieces.size() != 0) {
-					for(Integer id : closest_unfinished_pieces.keySet()) {
-						int possMoveID = -1;
-						double distanceY = 10000000;
-						int index = -1;
-						for(int i = 0; i < possMoves.size(); i++) {
-							Pair<Integer, Point> pair = possMoves.get(i);
-							double newDistanceY = Math.sqrt(Math.pow(pair.getValue().y - closest_unfinished_pieces.get(id).y, 2));
-							if(newDistanceY < distanceY) {
-								possMoveID = pair.getKey();
-								distanceY = newDistanceY;
-								index = i;
-							}
-						}
-						return possMoves.get(index);
-					}
-				}
-				else {
-					Random random = new Random();
-					Integer piece_id = random.nextInt(possMoves.size());
-					return possMoves.get(piece_id);
-				}
-			}
+//			HashMap<Integer, Point> unfinished_pieces = getUnfinishedPlayerPieces(opponent_pieces, !isplayer1, Approach.AGGRESSIVE);
+//			HashMap<Integer, Point> closest_unfinished_pieces = getClosestPointsToOpponentBoundary(1, unfinished_pieces, !isplayer1);
+//			if(closest_unfinished_pieces.size() != 0) {
+//				for(Integer id : closest_unfinished_pieces.keySet()) {
+//					int possMoveID = -1;
+//					double distanceY = 10000000;
+//					int index = -1;
+//					for(int i = 0; i < possMoves.size(); i++) {
+//						Pair<Integer, Point> pair = possMoves.get(i);
+//						double newDistanceY = Math.sqrt(Math.pow(pair.getValue().y - closest_unfinished_pieces.get(id).y, 2));
+//						if(newDistanceY < distanceY) {
+//							possMoveID = pair.getKey();
+//							distanceY = newDistanceY;
+//							index = i;
+//						}
+//					}
+//					if((isplayer1 && possMoves.get(index).getValue().x > -20) || (isplayer1 && possMoves.get(index).getValue().x < 20))
+//						return possMoves.get(index);
+//					return possMoves.get(0);
+//				}
+//			}
+			return possMoves.get(0);
 		}
 		return null;
+//		else {
+//			possMoves = buildWall(player_pieces, opponent_pieces, wall_pieces_second);
+//			if(possMoves.size() != 0) {
+//				HashMap<Integer, Point> unfinished_pieces = getUnfinishedPlayerPieces(opponent_pieces, !isplayer1, Approach.AGGRESSIVE);
+//				HashMap<Integer, Point> closest_unfinished_pieces = getClosestPointsToOpponentBoundary(1, unfinished_pieces, !isplayer1);
+//				if(closest_unfinished_pieces.size() != 0) {
+//					for(Integer id : closest_unfinished_pieces.keySet()) {
+//						int possMoveID = -1;
+//						double distanceY = 10000000;
+//						int index = -1;
+//						for(int i = 0; i < possMoves.size(); i++) {
+//							Pair<Integer, Point> pair = possMoves.get(i);
+//							double newDistanceY = Math.sqrt(Math.pow(pair.getValue().y - closest_unfinished_pieces.get(id).y, 2));
+//							if(newDistanceY < distanceY) {
+//								possMoveID = pair.getKey();
+//								distanceY = newDistanceY;
+//								index = i;
+//							}
+//						}
+//						return possMoves.get(index);
+//					}
+//				}
+//				else {
+//					Random random = new Random();
+//					Integer piece_id = random.nextInt(possMoves.size());
+//					return possMoves.get(piece_id);
+//				}
+//			}
+//		}
 
 		//		Pair<Integer, Point> move = null; // TODO: Change this implementation
 		//
@@ -178,9 +176,9 @@ public class ObstacleCreation extends Move {
 		wall_pos_list = new ArrayList<Point>();
 		wall_pos_list_second = new ArrayList<Point>();  
 		
-		for(int i = 0; i < WALL_POSITION_X.size(); i++){
-			wall_pos_list.add(new Point(x1, WALL_POSITION_X.get(i)));
-			wall_pos_list_second.add(new Point(x2, WALL_POSITION_X.get(i)));
+		for(int i = 0; i < WALL_POSITION_Y.size(); i++){
+			wall_pos_list.add(new Point(x1, WALL_POSITION_Y.get(i)));
+			wall_pos_list_second.add(new Point(x2, WALL_POSITION_Y.get(i)));
 		}
 		
 		for(Point p : wall_pos_list){
