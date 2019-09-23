@@ -38,6 +38,11 @@ class SmallNStrategy{
     public boolean inSoftEndZone( Point piece, boolean isPlayer1 ) {
         return (isPlayer1? -1 : 1) * piece.x > 20 + 1.75 * diameter_piece + (n / 9) * (diameter_piece / 2);
     }
+    
+    // x coordinate
+    public boolean inEndZone( Point piece, boolean isPlayer1 ) {
+        return (isPlayer1? -1 : 1) * piece.x > 20 + diameter_piece/2;
+    }
 
     // used for getting only pieces for building a wall
     public boolean inSoftNeutralZone( Point piece, boolean isPlayer1 ) {
@@ -77,7 +82,8 @@ class SmallNStrategy{
         int sign = arePiecesPlayer1? -1 : 1;
         // use indices.toArray() as a deep copy to avoid changing indices inside for loop
         for (Pair<Integer,Point> pair : orderedPieces) {
-            if (!inSoftEndZone(pieces.get(pair.getKey()), arePiecesPlayer1)) {
+            if (!inEndZone(pieces.get(pair.getKey()), arePiecesPlayer1)) {
+     //       if (!inSoftEndZone(pieces.get(pair.getKey()), arePiecesPlayer1)) {
     //    	    if ((pieces.get(pair.getKey()).x *sign) < (20 + diameter_piece/2)) {
                 outsideEndzonePieces.add(pair);
             }
@@ -238,7 +244,40 @@ class SmallNStrategy{
         }
         return null;        
     }
+    
+    // NEW FUNCTION FOR PROGRESSIVELY LESS FORWARD MOVE OF ONE PIECE AS OPTIONS ARE EXHAUSTED
+    private Pair<Integer, Point> getBackwardPieceMove( HashMap<Integer, Point> playerPieces, HashMap<Integer, Point> opponentPieces, boolean isPlayer1 ) {
+            // get all our pieces from closest to farthest
+    //        List<Pair<Integer,Point>> orderedXProgress = isFront? rankXProgressOutsideEndzone(playerPieces, isPlayer1):
+    //                                                                            rankXProgress(playerPieces, isPlayer1);
 
+    //          ORIGINAL
+        List<Pair<Integer,Point>>         orderedXProgress = rankXProgressOutsideEndzone(playerPieces, isPlayer1);
+        if (orderedXProgress.size() == 0 || Math.random() < 0.1) orderedXProgress = rankXProgress(playerPieces, isPlayer1);
+
+        for (int angle = 0; angle < 180; angle++) {
+            // choose random direction
+            double theta = ((random.nextDouble() > 0.5)? -1 : 1) *angle *Math.PI/180;
+            double dx = Math.cos(theta) * (isPlayer1? -1 : 1) * diameter_piece, dy = Math.sin(theta) * diameter_piece;
+
+            for (int i = orderedXProgress.size() - 1; i >= 0; i--) {
+                Pair<Integer,Point> pair = orderedXProgress.get(i);
+                Point oldPosition = pair.getValue();
+                
+                // start by checking random direction
+                Point newPosition = new Point(oldPosition.x + dx, oldPosition.y + dy);
+                Pair<Integer,Point> move = new Pair<Integer,Point>(pair.getKey(), newPosition);
+                if (Utilities.check_validity(move, playerPieces, opponentPieces)) return move;
+
+                // checking opposite direction (but with same angle)
+                newPosition = new Point(oldPosition.x + dx, oldPosition.y - dy);
+                move = new Pair<Integer,Point>(pair.getKey(), newPosition);
+                if (Utilities.check_validity(move, playerPieces, opponentPieces)) return move;
+            }
+        }
+
+        return null;        
+    }
 
 
     private Pair<Integer, Point> getRandomMove( HashMap<Integer, Point> playerPieces, HashMap<Integer, Point> opponentPieces, boolean isPlayer1, double spread ) {
@@ -293,14 +332,17 @@ class SmallNStrategy{
 
             while (moves.size() < numMoves) {
                 Pair<Integer, Point> move = null;
-
-                // move the closest piece that can move forward
-                move = getForwardMove(playerPieces, opponentPieces, isPlayer1, true);
+                
+                move = getBackwardPieceMove(playerPieces, opponentPieces, isPlayer1);
                 updateMoveList(playerPieces, move, moves);
+                
+                // move the closest piece that can move forward
+        //        move = getForwardMove(playerPieces, opponentPieces, isPlayer1, true);
+        //        updateMoveList(playerPieces, move, moves);
 
                 // move the farthest away piece that can move forward
-                move = getForwardMove(playerPieces, opponentPieces, isPlayer1, false);
-                updateMoveList(playerPieces, move, moves);
+        //        move = getForwardMove(playerPieces, opponentPieces, isPlayer1, false);
+        //        updateMoveList(playerPieces, move, moves);
 
                 // choose best forwardish direction as next option 
                 //             move = getBestForwardishMove(playerPieces, opponentPieces, isPlayer1, true);
@@ -311,13 +353,13 @@ class SmallNStrategy{
                 // choose valid random forwardish to less forward directions as next options
                 // Can first optimize by looking at only angles you haven't already looked at
                 // Ideally, would have an improved function [ getBestForwardishMove(), not yet built ] that finds the best move
-                move = getRandomMove(playerPieces, opponentPieces, isPlayer1, 90);
-                updateMoveList(playerPieces, move, moves);
-                move = getRandomMove(playerPieces, opponentPieces, isPlayer1, 180);
-                updateMoveList(playerPieces, move, moves);             
+        //         move = getRandomMove(playerPieces, opponentPieces, isPlayer1, 90);
+        //        updateMoveList(playerPieces, move, moves);
+        //        move = getRandomMove(playerPieces, opponentPieces, isPlayer1, 180);
+        //        updateMoveList(playerPieces, move, moves);             
 
-                move = getRandomMove(playerPieces, opponentPieces, isPlayer1, 270);
-                updateMoveList(playerPieces, move, moves);             
+        //        move = getRandomMove(playerPieces, opponentPieces, isPlayer1, 270);
+        //        updateMoveList(playerPieces, move, moves);             
             }
 
             return moves;
