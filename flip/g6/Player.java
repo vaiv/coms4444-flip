@@ -131,9 +131,9 @@ public class Player implements flip.sim.Player
 			}
 		}
 		
-//		System.out.println(moves.get(0).getKey() + " " + moves.get(0).getValue());
-//		System.out.println(moves.get(1).getKey() + " " + moves.get(1).getValue());
-		
+//		System.out.println("Move 1: " + moves.get(0).getKey() + " " + moves.get(0).getValue());
+//		System.out.println("Move 2: " + moves.get(1).getKey() + " " + moves.get(1).getValue());
+				
 		return moves;
 	}
 }

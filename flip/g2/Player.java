@@ -7,31 +7,32 @@ import java.util.ArrayList;
 
 import flip.sim.Point;
 import flip.sim.Board;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
+import java.util.Comparator;
+import java.util.Map.Entry;
+import java.util.PriorityQueue;
+import java.util.Queue;
 
 public class Player implements flip.sim.Player {
 
+    private final static double WALL_POSITION = -22.0;
+    private final static double WALL_HOLDING_PRIORITY = -1.0;
+    private final static double WALL_FORMATION_PRIORITY = 2.0;
+    private final static double RUNNER_PRIORITY = 4.0;
+    private final static double WALL_BREAKER_PRIORITY = 0.0;
+    private final static double REPLACEMENT_PRIORITY = 3.0;
+
     private int seed = 42;
     private boolean isPlayer1;
+    private double greedyProb;
     private Integer n;
     private Double pieceDiameter;
-    private PlayerParameters params;
+    private DiscreteBoard dBoard;
+    private Queue<Destination> destinations;
+    private List<Integer> wallHoldingPieces;
+    private Integer wallfillingpiece;
 
     public Player() {
-        params = new PlayerParameters();
-        params.offenseWeights = Arrays.asList(0.10817225568178673, 0.19579378351437962, 0.12078409912487767, -0.012847822989732294, -2.3869762884957217E-4);
-        params.defenseWeights = Arrays.asList(-0.17835669952853897, 0.022650662584658726, 0.05629321514794808, -0.03559470879552093, -0.0054959345337099764);
-    }
-
-    PlayerParameters getParams() {
-        return params;
-    }
-
-    void setParams(PlayerParameters params) {
-        this.params = params;
+        wallHoldingPieces = new ArrayList<>();
     }
 
     public HashMap<Integer, Point> flip(HashMap<Integer, Point> pieces) {
@@ -53,88 +54,13 @@ public class Player implements flip.sim.Player {
         this.n = n;
         this.isPlayer1 = isPlayer1;
         this.pieceDiameter = pieceDiameter;
-    }
+        this.dBoard = new DiscreteBoard(120, 40, 2);
 
-    public Integer sample(List<Double> pdf, double epsilon) {
-        if (Math.random() < epsilon) {
-            int greatestIdx = 0;
-            double greatestProb = 0.;
-            for (int i = 0; i < pdf.size(); i++) {
-                if (pdf.get(i) > greatestProb) {
-                    greatestProb = pdf.get(i);
-                    greatestIdx = i;
-                }
-            }
-
-            return greatestIdx;
+        if (isPlayer1) {
+            pieces = this.flip(pieces);
         }
 
-        List<Double> cdf = new ArrayList<>();
-        for (int i = 0; i < pdf.size(); i++) {
-            cdf.add(i == 0 ? pdf.get(i) : pdf.get(i) + cdf.get(i - 1));
-        }
-
-        double randomProb = Math.random();
-
-        int bestIdx = 0;
-        while (bestIdx < cdf.size()) {
-            if (randomProb < cdf.get(bestIdx)) {
-                break;
-            }
-            bestIdx++;
-        }
-        return bestIdx;
-    }
-
-    public List<Double> playerValences(List<Double> weights, HashMap<Integer, Point> playerPieces) {
-        ArrayList<ArrayList<Double>> playerInputs = new ArrayList<>();
-        for (int i = 0; i < playerPieces.keySet().size(); i++) {
-            ArrayList<Double> playerInput = new ArrayList<>();
-            Point p = playerPieces.get(i);
-
-            // X-axis features
-            double normalizedDistance = (80.0 - this.getDistanceToTarget(p)) / 80.0;
-            playerInput.add(normalizedDistance);
-
-            int quadrant = p.x <= -20 ? 0 : (p.x < 20) ? 1 : 2;
-            for (int j = 0; j < 3; j++) {
-                playerInput.add(quadrant == j ? 1.0 : 0.0);
-            }
-
-            playerInputs.add(playerInput);
-        }
-        alliedPiecesBehind(playerPieces, playerInputs);
-
-        ArrayList<Double> scores = new ArrayList<>();
-        for (int j = 0; j < playerInputs.size(); j++) {
-            ArrayList<Double> inputArr = playerInputs.get(j);
-            double score = 0;
-            for (int z = 0; z < inputArr.size(); z++) {
-                score += inputArr.get(z) * weights.get(z);
-            }
-            scores.add(score);
-        }
-
-        return scores;
-    }
-
-    List<Double> softmax(List<Double> scores) {
-        List<Double> scoresExp = new ArrayList<>();
-        for (int i = 0; i < scores.size(); i++) {
-            scoresExp.add(Math.exp(scores.get(i)));
-        }
-
-        double scoresExpSum = 0.0;
-        for (int i = 0; i < scores.size(); i++) {
-            scoresExpSum += scoresExp.get(i);
-        }
-
-        List<Double> scoresSoftmax = new ArrayList<>();
-        for (int i = 0; i < scores.size(); i++) {
-            scoresSoftmax.add(scoresExp.get(i) / scoresExpSum);
-        }
-
-        return scoresSoftmax;
+        setupStrategy(pieces);
     }
 
     /**
@@ -152,91 +78,270 @@ public class Player implements flip.sim.Player {
             HashMap<Integer, Point> opponentPieces,
             boolean isPlayer1) {
 
-        HashMap<Integer, Point> pp = playerPieces;
-        HashMap<Integer, Point> op = opponentPieces;
         if (isPlayer1) {
-            pp = this.flip(pp);
-            op = this.flip(op);
+            playerPieces = this.flip(playerPieces);
+            opponentPieces = this.flip(opponentPieces);
         }
 
         List<Pair<Integer, Point>> moves = new ArrayList<>();
 
-        List<Double> offenseValences = this.playerValences(params.offenseWeights, pp);
-        List<Double> defenseValences = this.playerValences(params.defenseWeights, pp);
-        List<Double> maxValences = new ArrayList<>();
-        for (int i = 0; i < offenseValences.size(); i++) {
-            maxValences.add(Math.max(offenseValences.get(i), defenseValences.get(i)));
-        }
-
-        List<Double> maxValencesSoftmax = this.softmax(maxValences);
+        detectWall(playerPieces, opponentPieces);
 
         for (int i = 0; i < numMoves; i++) {
-            int sampledId = this.sample(maxValencesSoftmax, 0.5);
-
-            Double offensiveScore = offenseValences.get(sampledId);
-            Double defensiveScore = defenseValences.get(sampledId);
-            List<Double> strategyScores = new ArrayList();
-            strategyScores.add(offensiveScore);
-            strategyScores.add(defensiveScore);
-            int sampledStrategy = this.sample(strategyScores, 0.5);
-
-            double theta = 0.0; // offensive strategy is to go straight ahead if possible
-            if (sampledStrategy == 1) {
-                theta = this.defensiveTheta(pp.get(sampledId), op);
+            final Destination d = destinations.peek();
+            if (d == null) {
+                passARunner(playerPieces, opponentPieces);
+                i--;
+                continue;
             }
-
-            Pair<Integer, Point> newMove = this.getPositionToMove(
-                    new Pair<>(sampledId, pp.get(sampledId)), pp, op, theta);
-            pp.put(sampledId, newMove.getValue());
-
-            if (isPlayer1) {
-                newMove.getValue().x = -newMove.getValue().x;
+            if (wallHoldingPieces.contains(d.id)) {
+                destinations.poll();
+                i--;
+                continue;
             }
-            moves.add(newMove);
+            //System.out.println(destinations);
+            //System.out.println("*** " + d);
+            final Pair<Integer, Point> piecePair = new Pair<>(d.id, playerPieces.get(d.id));
+            final double theta = this.getBestAngleToMove(piecePair, d.position, playerPieces, opponentPieces);
+            final Pair<Integer, Point> move = this.getPositionToMove(piecePair, playerPieces, opponentPieces, theta);
+            if (getDistance(d.position, move.getValue()) > getDistance(d.position, piecePair.getValue())) {
+                destinations.poll();
+                i--;
+                continue;
+            }
+            moves.add(move);
+            playerPieces.put(move.getKey(), move.getValue());
+            updateQueue(playerPieces);
         }
 
+        if (isPlayer1) {
+            final List<Pair<Integer, Point>> reflectedMoves = new ArrayList<>();
+            for (Pair<Integer, Point> move : moves) {
+                final Pair<Integer, Point> rMove = new Pair<>(move.getKey(), new Point(-move.getValue().x, move.getValue().y));
+                reflectedMoves.add(rMove);
+            }
+            moves = reflectedMoves;
+        }
+        System.out.println("***" + moves);
         return moves;
     }
 
-    public double defensiveTheta(Point playerPiece, HashMap<Integer, Point> opponentPieces) {
-        double shortestDistance = 9999.0;
-        double shortestX = 0.0;
-        double shortestY = 0.0;
-
-        for (int i = 0; i < opponentPieces.keySet().size(); i++) {
-            Point op = opponentPieces.get(i);
-            if (op.x <= playerPiece.x || Math.abs(op.y - playerPiece.y) >= 20) {
-                continue;
-            } else {
-                double distance = Math.sqrt(Math.pow(playerPiece.x - op.x, 2) + Math.pow(playerPiece.y - op.y, 2));
-
-                if (distance <= shortestDistance) {
-                    shortestX = op.x;
-                    shortestY = op.y;
-                    shortestDistance = distance;
-                }
-            }
+    protected Pair<Integer, List<Point>> findBestRunner(HashMap<Integer, Point> playerPieces,
+            HashMap<Integer, Point> opponentPieces) {
+        if (wallHoldingPieces.size() > 0) {
+            //double minX = 120.0;
+            //double cumY = 0.0;
+            //for (int pidx : wallHoldingPieces) {
+            //    minX = Math.min(playerPieces.get(pidx).x, minX);
+            //    cumY = cumY + playerPieces.get(pidx).y;
+            //}
+            //Point target = new Point(minX - pieceDiameter, cumY / (double) wallHoldingPieces.size());
+            final Point breachPoint = playerPieces.get(wallHoldingPieces.get(0));
+            final Point target = new Point(breachPoint.x - pieceDiameter, breachPoint.y);
+            return shortestPathToTarget(playerPieces, opponentPieces, target);
         }
 
-        double theta = 0.0;  // if no opponent pieces ahead of us, just book it
-        if (shortestDistance <= 120.0) {
-            double deltaX = shortestX - playerPiece.x;
-            double deltaY = shortestY - playerPiece.y;
-            theta = Math.atan2(deltaY, deltaX);
-        }
-        return theta;
+        return null;
     }
 
-    public boolean checkValidity(Pair<Integer, Point> move, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces) {
+    protected Pair<Integer, List<Point>> findBestReplacement(HashMap<Integer, Point> playerPieces,
+            HashMap<Integer, Point> opponentPieces, Point target) {
+        return shortestPathToTarget(playerPieces, opponentPieces, new Point(target.x - pieceDiameter, target.y));
+    }
+
+    protected void passARunner(HashMap<Integer, Point> playerPieces, HashMap<Integer, Point> opponentPieces) {
+        final Pair<Integer, List<Point>> bestRunner = findBestRunner(playerPieces, opponentPieces);
+        if (bestRunner != null) {
+            Pair<Integer, List<Point>> bestReplacement = findBestReplacement(playerPieces, opponentPieces,
+                    playerPieces.get(bestRunner.getKey()));
+            if (bestReplacement != null) {
+                System.out.println("Runner " + bestRunner);
+                System.out.println("Replacement " + bestReplacement);
+                
+                final Point runnerPos = playerPieces.get(bestRunner.getKey());
+                
+                createDestinationsFromPath(
+                        bestReplacement.getKey(), 
+                        bestReplacement.getValue(), 
+                        REPLACEMENT_PRIORITY, 
+                        0.001
+                );
+                
+                destinations.add(new Destination(
+                        (REPLACEMENT_PRIORITY + RUNNER_PRIORITY) / 2,
+                        bestReplacement.getKey(),
+                        new Point(runnerPos.x - pieceDiameter, runnerPos.y)));
+                destinations.add(new Destination(
+                        (REPLACEMENT_PRIORITY + RUNNER_PRIORITY) / 2 + 0.01,
+                        bestRunner.getKey(),
+                        new Point(runnerPos.x + pieceDiameter, runnerPos.y)));
+                destinations.add(new Destination(
+                        (REPLACEMENT_PRIORITY + RUNNER_PRIORITY) / 2 + 0.02,
+                        bestReplacement.getKey(),
+                        runnerPos));
+                
+                final Point breachPoint = playerPieces.get(wallHoldingPieces.get(0));
+                final Point target = new Point(breachPoint.x - pieceDiameter, breachPoint.y);
+                destinations.add(new Destination(
+                        (REPLACEMENT_PRIORITY + RUNNER_PRIORITY) / 2 + 0.03,
+                        bestRunner.getKey(),
+                        target));
+                
+                Integer oldWallHolder = wallHoldingPieces.get(0);
+//                wallHoldingPieces.remove(0);
+//                wallHoldingPieces.add(bestRunner.getKey());
+                destinations.add(new Destination(
+                        RUNNER_PRIORITY + 1,
+                        oldWallHolder,
+                        new Point(breachPoint.x + pieceDiameter, breachPoint.y)));
+                
+                destinations.add(new Destination(
+                        RUNNER_PRIORITY + 1.01,
+                        bestRunner.getKey(),
+                        breachPoint));
+                
+                destinations.add(new Destination(
+                        RUNNER_PRIORITY + 1.02,
+                        oldWallHolder,
+                        new Point(18, breachPoint.y)));
+                
+//                createDestinationsFromPath(
+//                        bestRunner.getKey(),
+//                        bestRunner.getValue(),
+//                        RUNNER_PRIORITY,
+//                        0.001
+//                );
+            }
+        }
+    }
+    
+    protected void createDestinationsFromPath(Integer piece, List<Point> path, double priority, double priorityIncrement) {
+        for (Point p : path) {
+            destinations.add(new Destination(priority, piece, p));
+            priority += priorityIncrement;
+        }
+    }
+
+    protected void setupStrategy(HashMap<Integer, Point> pieces) {
+        final Comparator<Destination> dc = (Destination d1, Destination d2) -> d1.priority.compareTo(d2.priority);
+        this.destinations = new PriorityQueue(n, dc);
+
+        
+        if (n > 12) {
+            // pick a runner
+            HashMap<Integer, Point> cPieces = new HashMap<>(pieces);
+            Integer runner = getCloser(new Point(20, 0), cPieces);
+            cPieces.remove(runner);
+            destinations.add(new Destination(WALL_BREAKER_PRIORITY, runner, new Point(21, 0)));
+
+            // pick wall pieces (based on closeness to wall pieces position
+            final double wallOffset = 40.0 / 12;
+            for (int i = 0; i < 12; i++) {
+                final Point wallPoint = new Point(WALL_POSITION, wallOffset * (i + 0.5) - 20);
+                final Integer closest = getCloser(wallPoint, cPieces);
+                destinations.add(new Destination(WALL_FORMATION_PRIORITY - (pieces.get(closest).x + 60) / 60, closest, wallPoint));
+                cPieces.remove(closest);
+            }
+        } else {
+            for (Entry<Integer, Point> p : pieces.entrySet()) {
+                Integer id = p.getKey();
+                Point position = p.getValue();
+                destinations.add(new Destination(Math.abs(position.x), id, new Point(22, position.y)));
+            }
+        }
+    }
+
+    protected Integer getCloser(Point point, HashMap<Integer, Point> pieces) {
+        double bestDistance = Double.POSITIVE_INFINITY;
+        Integer closerPoint = null;
+        for (Entry<Integer, Point> p : pieces.entrySet()) {
+            final double d = getDistance(p.getValue(), point);
+            if (d < bestDistance) {
+                closerPoint = p.getKey();
+                bestDistance = d;
+            }
+        }
+        return closerPoint;
+    }
+
+    protected void updateQueue(HashMap<Integer, Point> playerPieces) {
+        final Destination d = destinations.peek();
+        final Point curPos = playerPieces.get(d.id);
+        final double distance = Math.hypot(d.position.y - curPos.y, d.position.x - curPos.x);
+        //System.out.println("***distance " + distance);
+        if (distance < pieceDiameter / 2) {
+            System.out.println("***Removing " + destinations.poll() + " distance " + distance);
+            if (d.priority == WALL_HOLDING_PRIORITY) {
+                wallHoldingPieces.add(d.id);
+            }
+        }
+    }
+
+    protected Pair<Integer, List<Point>> shortestPathToTarget(HashMap<Integer, Point> playerPieces,
+            HashMap<Integer, Point> opponentPieces, Point target) {
+        dBoard.reset();
+        dBoard.recordOpponentPieces(opponentPieces.values());
+        dBoard.recordPlayerPiecesIdx(playerPieces.values());
+
+        return dBoard.findClosestPiece(target);
+    }
+
+    protected void detectWall(HashMap<Integer, Point> playerPieces, HashMap<Integer, Point> opponentPieces) {
+        try {
+            dBoard.reset();
+            dBoard.recordOpponentPieces(opponentPieces.values());
+            Double crowdedX = dBoard.getCrowdedColumn(-22, 22);
+            if (crowdedX != null) {
+                //System.out.println("***Crowded " + crowdedX);
+                final double cY = dBoard.findAHole(crowdedX);
+                final Point blockPoint = new Point(crowdedX + pieceDiameter / 2, cY);
+                //System.out.println("***" + cY);
+                final Integer closerId = getCloser(blockPoint, playerPieces);
+                if ((destinations.isEmpty() || destinations.peek().priority != WALL_HOLDING_PRIORITY) && wallHoldingPieces.isEmpty()) {
+                    final Point closerPosition = playerPieces.get(closerId);
+                    final Point altBlockPoint = new Point(closerPosition.x + pieceDiameter / 2, closerPosition.y);
+                    System.out.println("***Block wall, move " + closerId + " to (" + crowdedX + ", " + cY + ")");
+                    //destinations.add(new Destination(WALL_HOLDING_PRIORITY, closerId, 
+                    //        Math.abs(crowdedX - closerPosition.x) > pieceDiameter / 2 ? blockPoint : altBlockPoint));
+                    destinations.add(new Destination(WALL_HOLDING_PRIORITY, closerId, blockPoint));
+
+                }
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+    
+    protected boolean isThereAWall(HashMap<Integer, Point> playerPieces, HashMap<Integer, Point> opponentPieces) {
+        try {
+            dBoard.reset();
+            dBoard.recordOpponentPieces(opponentPieces.values());
+            dBoard.recordOpponentPieces(playerPieces.values());
+            return dBoard.isThereAFullColumn(WALL_POSITION + pieceDiameter, 22);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    protected boolean checkValidity(Pair<Integer, Point> move, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces) {
         boolean valid = true;
 
         // check if move is adjacent to previous position.
         if (!Board.almostEqual(Board.getdist(player_pieces.get(move.getKey()), move.getValue()), pieceDiameter)) {
+            System.out.println("No Adjacent");
             return false;
         }
         // check for collisions
         valid = valid && !Board.check_collision(player_pieces, move);
+        if (!valid) {
+            System.out.println("Collision with own pieces");
+        }
         valid = valid && !Board.check_collision(opponent_pieces, move);
+        if (!valid) {
+            System.out.println("Collision with opponent pieces");
+        }
 
         // check within bounds
         valid = valid && Board.check_within_bounds(move);
@@ -327,21 +432,6 @@ public class Player implements flip.sim.Player {
     }
 
     /**
-     * Computes the distances from each point to the first obstacle to move
-     * forward
-     *
-     * @param playerPieces
-     * @param opponentPieces
-     * @return A map with the distances corresponding to each point
-     */
-    protected HashMap<Integer, Double> getDistanceToFirstObstacle(HashMap<Integer, Point> playerPieces, HashMap<Integer, Point> opponentPieces) {
-        HashMap<Integer, Double> distanceMap = new HashMap<>();
-        playerPieces.forEach((key, value) -> distanceMap.put(key, 0.0));
-
-        return distanceMap;
-    }
-
-    /**
      * Given a piece decides to what position to move it (implicitly the angle)
      *
      * @param piece
@@ -353,15 +443,17 @@ public class Player implements flip.sim.Player {
     protected Pair<Integer, Point> getPositionToMove(
             Pair<Integer, Point> piece, HashMap<Integer, Point> playerPieces, HashMap<Integer, Point> opponentPieces, double theta) {
         double window = 0.0;
+
         while (window < Math.PI) {
             for (int i = -1; i < 2; i += 2) {
                 double theta_adj = theta + i * window;
-                double delta_x = 2 * Math.cos(theta_adj);
-                double delta_y = 2 * Math.sin(theta_adj);
-                Point newPos = new Point(piece.getValue().x + delta_x, piece.getValue().y + delta_y);
+                Point newPos = getNewPosition(piece.getValue(), theta_adj);
+                //System.out.println("Move " + piece.getKey() + " to " + newPos);
                 Pair<Integer, Point> newMove = new Pair(piece.getKey(), newPos);
                 if (this.checkValidity(newMove, playerPieces, opponentPieces)) {
                     return newMove;
+                } else {
+                    //System.out.println("No valid");
                 }
             }
             window += 0.01;
@@ -370,33 +462,56 @@ public class Player implements flip.sim.Player {
         return null;
     }
 
-    public LinkedHashMap<Integer, Double> sortHashMapByValues(
-            HashMap<Integer, Double> passedMap) {
-        List<Integer> mapKeys = new ArrayList<>(passedMap.keySet());
-        List<Double> mapValues = new ArrayList<>(passedMap.values());
-        Collections.sort(mapValues);
-        Collections.sort(mapKeys);
+    private double getBestAngleToMove(
+            Pair<Integer, Point> piece,
+            Point tarPos,
+            HashMap<Integer, Point> playerPieces,
+            HashMap<Integer, Point> opponentPieces) {
+        final Point curPos = piece.getValue();
+        final double distance = getDistance(tarPos, curPos);
+        final double angle = Math.atan2(tarPos.y - curPos.y, tarPos.x - curPos.x);
 
-        LinkedHashMap<Integer, Double> sortedMap
-                = new LinkedHashMap<>();
-
-        Iterator<Double> valueIt = mapValues.iterator();
-        while (valueIt.hasNext()) {
-            Double val = valueIt.next();
-            Iterator<Integer> keyIt = mapKeys.iterator();
-
-            while (keyIt.hasNext()) {
-                Integer key = keyIt.next();
-                Double comp1 = passedMap.get(key);
-                Double comp2 = val;
-
-                if (comp1.equals(comp2)) {
-                    keyIt.remove();
-                    sortedMap.put(key, val);
-                    break;
-                }
-            }
+        if (Math.abs(pieceDiameter - distance) < 0.01 || distance >= 2 * pieceDiameter) {
+            return angle;
         }
-        return sortedMap;
+
+        final double oAngle = Math.acos(distance / 2 / pieceDiameter);
+
+        final double theta1 = angle + oAngle;
+        final double theta2 = angle - oAngle;
+
+        Point newPos = getNewPosition(curPos, theta1);
+        Pair<Integer, Point> move = new Pair<>(piece.getKey(), newPos);
+
+        return checkValidity(move, playerPieces, opponentPieces) ? theta1 : theta2;
     }
+
+    protected Point getNewPosition(Point pos, double angle) {
+        final double deltaX = pieceDiameter * Math.cos(angle);
+        final double deltaY = pieceDiameter * Math.sin(angle);
+        return new Point(pos.x + deltaX, pos.y + deltaY);
+    }
+
+    protected double getDistance(Point p1, Point p2) {
+        return Math.hypot(p2.y - p1.y, p2.x - p1.x);
+    }
+}
+
+class Destination {
+
+    Double priority;
+    Integer id;
+    Point position;
+
+    public Destination(Double priority, Integer id, Point position) {
+        this.priority = priority;
+        this.id = id;
+        this.position = position;
+    }
+
+    @Override
+    public String toString() {
+        return "Destination{" + "priority=" + priority + ", id=" + id + ", position=" + position + '}';
+    }
+
 }
