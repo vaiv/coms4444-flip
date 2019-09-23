@@ -21,15 +21,15 @@ public class Player implements flip.sim.Player
 	private boolean isplayer1;
 	private Integer n;
 	private Double diameter_piece;
-    private int nPieceForWall = 12;
+    private int nPieceForWall = 11;
     private Wall wall;
 	public Player()
 	{
 		random = new Random(seed);
 	}
 
-	private double player1StoppingPoint = -35;
-	private double player2StoppingPoint = 35;
+	private double player1StoppingPoint = -15;
+	private double player2StoppingPoint = 15;
 
 	// Initialization function.
     // pieces: Location of the pieces for the player.
@@ -41,7 +41,7 @@ public class Player implements flip.sim.Player
 		this.isplayer1 = isplayer1;
 		this.diameter_piece = diameter_piece;
 
-        this.wall = new Wall(pieces, nPieceForWall, isplayer1 ? 20.0 : -20.0);
+        this.wall = new Wall(pieces, 11, isplayer1 ? 20.0 : -20.0);
 	}
 
 	public List<Pair<Integer, Point>> getMoves(Integer num_moves, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, boolean isplayer1)
@@ -59,44 +59,44 @@ public class Player implements flip.sim.Player
         ArrayList<Integer> runnerPieces = new ArrayList<>();
 
         List<Pair<Integer, Point>> output = new ArrayList<Pair<Integer, Point>> ();
-        while(output.size() < num_moves) {
-            for (int i = 0; i < n; i++) {
-                if (!wallPieces.contains(i)) {
-                    if (isplayer1) {
-                        if (player_pieces.get(i).x < this.wall.xPos) {
-                            runnerPieces.add(i);
-                        } else {
-                            backPieces.add(i);
-                        }
+        for (int i = 0; i < n; i++) {
+            if (!wallPieces.contains(i)) {
+                if (isplayer1) {
+                    if (player_pieces.get(i).x < this.wall.xPos) {
+                        runnerPieces.add(i);
                     } else {
-                        if (player_pieces.get(i).x > this.wall.xPos) {
-                            runnerPieces.add(i);
-                        } else {
-                            backPieces.add(i);
-                        }
+                        backPieces.add(i);
+                    }
+                } else {
+                    if (player_pieces.get(i).x > this.wall.xPos) {
+                        runnerPieces.add(i);
+                    } else {
+                        backPieces.add(i);
                     }
                 }
             }
+        }
 
-            Pair<Integer, Point> move = null;
-            for (Integer i : runnerPieces) {
-                do {
-                    if ((isplayer1 && player_pieces.get(i).x > player1StoppingPoint) || (!isplayer1 && player_pieces.get(i).x < player2StoppingPoint)) {
-                        move = greedyMove(i, player_pieces, opponent_pieces, isplayer1);
-                        if (move != null) {
-                            player_pieces.put(i, move.getValue());
-                            output.add(move);
-                        }
-                    } else {
-                        break;
+        Pair<Integer, Point> move;
+        for (Integer i : runnerPieces) {
+            if ((isplayer1 && player_pieces.get(i).x > player1StoppingPoint) || (!isplayer1 && player_pieces.get(i).x < player2StoppingPoint)) {
+                move = new Pair(i, greedyMove(i, player_pieces, opponent_pieces, isplayer1));
+                if (move != null) {
+                    player_pieces.put(i, move.getValue());
+                    output.add(move);
+                    if (output.size() == num_moves) {
+                        return output;
                     }
-                } while (output.size() < num_moves && move != null);
+                }
             }
+        }
 
-            int minPiece = -1;
-            double minDist = Double.POSITIVE_INFINITY;
-            int closestWallPiece = -1;
-            if (backPieces.size() > 0) {
+        int minPiece = -1;
+        double minDist = Double.POSITIVE_INFINITY;
+        int closestWallPiece = -1;
+        if (backPieces.size() > 0) {
+
+            while(output.size() < num_moves) {
                 for (Integer i : backPieces) {
                     for (Integer j : wallPieces) {
                         double dist = getDist(player_pieces.get(i), player_pieces.get(j));
@@ -112,26 +112,23 @@ public class Player implements flip.sim.Player
                 }
                 if (minDist < 2.1) {
                     //Pieces are tangent
+                    System.out.println("Min");
                     if(num_moves - output.size() < 2) {
-                        return output;
+                        System.out.println("AIJOSIEJ0");
+                        return null;
                     }
                     Point oldPos = player_pieces.get(closestWallPiece);
                     move = greedyMove(closestWallPiece, player_pieces, opponent_pieces, isplayer1);
-                    output.add(move);
 
-                    player_pieces.put(closestWallPiece, move.getValue());
+                    output.add(move);
 
                     move = new Pair(minPiece, getMostDirectMove(oldPos, player_pieces.get(minPiece)));
-
-                    if(!check_validity(move, player_pieces, opponent_pieces)) {
-                        move = greedyMove(minPiece, player_pieces, opponent_pieces, isplayer1);
-                    }
                     output.add(move);
-                    System.out.println("old wall piece: " + closestWallPiece);
-                    System.out.println("new wall piece: " + minPiece);
                     wall.changeBrick(closestWallPiece, move);
-                    System.out.println("Should be true:" + this.wall.getWallPieceIds().contains(minPiece));
-                    System.out.println("Should be false: " + this.wall.getWallPieceIds().contains(closestWallPiece));
+                    backPieces.remove(closestWallPiece);
+                    wallPieces.add(closestWallPiece);
+                    runnerPieces.add(minPiece);
+                    wallPieces.remove(minPiece);
                 }
                 else {
                     output.add(new Pair(minPiece, getIdealTangentMove(closestWallPiece, minPiece, player_pieces, opponent_pieces)));
@@ -205,7 +202,7 @@ public class Player implements flip.sim.Player
             new_position.y += delta_y1;
             move = new Pair<Integer, Point>(movingPiece, new_position);
             dist = getDist(new_position, playerPieces.get(goalPiece));
-            if(dist % 2 < .05) {
+            if(dist % 2 < .1) {
                 if(check_validity(move,	playerPieces, opponentPieces)) {
                     return new_position;
                 }
@@ -220,7 +217,7 @@ public class Player implements flip.sim.Player
             new_position.y += delta_y2;
             move = new Pair<Integer, Point>(movingPiece, new_position);
             dist = getDist(new_position, playerPieces.get(goalPiece));
-            if(dist % 2 < .05) {
+            if(dist % 2 < .1) {
                 if(check_validity(move,	playerPieces, opponentPieces)) {
                     return new_position;
                 }
@@ -249,8 +246,13 @@ public class Player implements flip.sim.Player
     {
         List<Pair<Integer, Point>> moves = new ArrayList<Pair<Integer, Point>>();
 
-        for (int i = 0; i < num_moves; i++)
-            moves.add(this.wall.buildAndGetMove(player_pieces, opponent_pieces));
+        Pair<Integer, Point> move;
+
+        for (int i = 0; i < num_moves; i++) {
+            move = this.wall.buildAndGetMove(player_pieces, opponent_pieces);
+            moves.add(move);
+            player_pieces.put(move.getKey(), move.getValue());
+        }
 
         return moves;
     }
@@ -419,16 +421,55 @@ public class Player implements flip.sim.Player
         return move;
     }
 
+    // Randomly takes a step backwards to try and get unstuck.
+    private Pair<Integer, Point> getRandomBackMove(Pair<Integer, Point> piece, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces)
+    {
+        int nAttempts = 0;
+        Point piecePos = piece.getValue();
+        double theta, delta_x, delta_y;
+        Point newPos;
+        Pair<Integer, Point> move = null;
+
+        while (nAttempts < 1000) {
+
+            theta = -Math.PI/2 + Math.PI * random.nextDouble();
+            delta_x = diameter_piece * Math.cos(theta);
+            delta_y = diameter_piece * Math.sin(theta);
+
+            newPos = new Point(piecePos);
+            newPos.x = isplayer1 ? piecePos.x + delta_x : piecePos.x - delta_x;
+            newPos.y = piecePos.y + delta_y;
+
+            move = new Pair<Integer, Point>(piece.getKey(), newPos);
+            if (check_validity(move, player_pieces, opponent_pieces))
+                break;
+
+            nAttempts++;
+        }
+
+        System.out.println("Moving back randomly to get unstuck");
+
+        return move;
+    }
+
     /*
      * Returns move that either moves piece exactly to dst, or moves piece towards dst s.t. future calls to getExactMove()
      * will eventually move piece exactly to dst. Caller responsible for checking validity of move.
      */
     private Pair<Integer, Point> getExactMove(Pair<Integer, Point> piece, Point dst, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces)
     {
+        Pair<Integer, Point> move;
+
         // If the dist to dst is >= 2 piece widths or is exactly 1 width just move towards dst in a straight line
         if (l2norm(piece, dst) >= 2 * diameter_piece || Math.abs(l2norm(piece, dst) - diameter_piece) < 0.001) {
-            System.out.println("Moving directly");
-            return getDirectMove(piece, dst);
+            move = getDirectMove(piece, dst);
+            if (check_validity(move, player_pieces, opponent_pieces)) {
+                System.out.println("Moving directly");
+                return move;
+            } else {
+                move = getRandomBackMove(piece, player_pieces, opponent_pieces);
+                return move;
+            }
         }
 
         // We'll move s.t. piece is exactly diameter_piece away from dst so next move will get it there
@@ -439,6 +480,7 @@ public class Player implements flip.sim.Player
         double alpha = Math.atan2(dst.y-piecePos.y, dst.x-piecePos.x);
         System.out.println("alpha = " + Double.toString(Math.toDegrees(alpha)));
         // If we draw an isoceles triangle with the equal sides = diameter_piece, beta is the value of the base angles
+        System.out.println(l2norm(piecePos, dst)/2);
         double beta = Math.acos((l2norm(piecePos, dst)/2) / diameter_piece);
         System.out.println("beta = " + Double.toString(Math.toDegrees(beta)));
 
@@ -448,7 +490,7 @@ public class Player implements flip.sim.Player
         double delta_y = diameter_piece * Math.sin(theta);
         Point newPos = new Point(piecePos.x + delta_x, piecePos.y + delta_y);
 
-        Pair<Integer, Point> move = new Pair<Integer, Point>(piece.getKey(), newPos);
+        move = new Pair<Integer, Point>(piece.getKey(), newPos);
 
         // If that's not valid, we'll try the opposite triangle
         if (!check_validity(move, player_pieces, opponent_pieces)) {
@@ -464,16 +506,20 @@ public class Player implements flip.sim.Player
         return move;
     }
 
-
     // Same idea as getExactMove(), but tries to take a step back first to get unstuck.
     // TODO: We can combine this with getExactMove()? Depends on if we prioritize moving this piece first or prioritize
     // trying to avoid moving backwards.
     private Pair<Integer, Point> getExactMoveWithBack(Pair<Integer, Point> piece, Point dst, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces)
     {
+        Pair<Integer, Point> move;
+
         // If the dist to dst is >= 2 piece widths or is exactly 1 width just move towards dst in a straight line
         if (l2norm(piece, dst) >= 2 * diameter_piece || Math.abs(l2norm(piece, dst) - diameter_piece) < 0.001) {
-            System.out.println("Moving directly");
-            return getDirectMove(piece, dst);
+            move = getDirectMove(piece, dst);
+            if (check_validity(move, player_pieces, opponent_pieces)) {
+                System.out.println("Moving directly");
+                return move;
+            }
         }
 
         // We'll move s.t. piece is exactly diameter_piece away from dst so next 2 direct moves will get it there
@@ -494,7 +540,7 @@ public class Player implements flip.sim.Player
         double delta_y = diameter_piece * Math.sin(theta);
         Point newPos = new Point(piecePos.x + delta_x, piecePos.y + delta_y);
 
-        Pair<Integer, Point> move = new Pair<Integer, Point>(piece.getKey(), newPos);
+        move = new Pair<Integer, Point>(piece.getKey(), newPos);
 
         // If that's not valid, we'll try the opposite triangle
         if (!check_validity(move, player_pieces, opponent_pieces)) {
@@ -514,9 +560,9 @@ public class Player implements flip.sim.Player
     {
         private class Brick
         {
-            public Point idealPos;
-            public Pair<Integer, Point> piece;
-            public boolean pieceInPlace = false;
+            private Point idealPos;
+            private Pair<Integer, Point> piece;
+            private boolean pieceInPlace = false;
 
             public Brick(Point idealPos) { this.idealPos = idealPos; }
             public Point getIdealPos() { return this.idealPos; }
@@ -554,9 +600,9 @@ public class Player implements flip.sim.Player
             }
         }
 
-        // Slightly closer to border than minimum flippable gap 20.0 - sqrt(3)
-        public final Double yPosTopBrick = 18.27;
-        public final Double yPosBotBrick = -18.27;
+        // Slightly closer to border than minimum flippable gap 20.0 - (1 + sqrt(3))
+        public final Double yPosTopBrick = 17.27;
+        public final Double yPosBotBrick = -17.27;
 
         private List<Brick> bricks;
         private int nBricks;
@@ -624,15 +670,11 @@ public class Player implements flip.sim.Player
             }
             return out;
         }
-
         public void changeBrick(Integer currentVal, Pair<Integer, Point> newBrick) {
             for(Brick brick : this.bricks) {
-                if(brick.getPiece().getKey().equals(currentVal)) {
-                    System.out.println("CHANGING BRICK");
+                if(brick.getPiece().getKey() == currentVal) {
                     brick.piece = newBrick;
                     brick.idealPos = newBrick.getValue();
-                } else {
-                    System.out.println("the big bad  " + brick.getPiece().getKey() + " " + currentVal);
                 }
             }
         }
@@ -690,14 +732,15 @@ public class Player implements flip.sim.Player
             // TODO: refactor; combine getExactMoveWithBack() with getExactMove()?
             // This is the case where the wall isn't built yet, but all remaining pieces can't move.
             // This typically happens for the last piece where it doesn't have enough room to do the triangle flip from
-            // either top or bottom. We'll probably need to write some logic for backing up then flipping to handle this.
-            if (!check_validity(move, player_pieces, opponent_pieces)) {
-                // TODO: what if this fails too?
+            // either top or bottom. We try line up with idealPos by taking a step back.
+            if (!check_validity(move, player_pieces, opponent_pieces))
+                // TODO: This function doesn't seem to be working right now; it seems we're never doing this move option.
                 move = getExactMoveWithBack(toBuild.getPiece(), toBuild.getIdealPos(), player_pieces, opponent_pieces);
-                if (!check_validity(move, player_pieces, opponent_pieces)) {
-                    //move = greedyMove(move.getKey(), player_pieces, opponent_pieces, isplayer1);
-                }
-            }
+
+            // Try to get unstuck
+            if (!check_validity(move, player_pieces, opponent_pieces))
+                // TODO: what if this returns invalid too, e.g. the piece is surrounded?
+                move = getRandomBackMove(toBuild.getPiece(), player_pieces, opponent_pieces);
 
             toBuild.updatePiece(move);
 
