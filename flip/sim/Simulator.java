@@ -45,7 +45,7 @@ public class Simulator
     private static final String statics_root = "statics";
 	private static List<String> playerNames;
 	private static boolean gui = false;
-	private static double fps = 50;
+	private static double fps = 30;
 	private static Integer n_pieces = 10;
 	private static Integer seed = 42;
 	private static Integer runs = 1;
