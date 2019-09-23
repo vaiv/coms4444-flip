@@ -50,7 +50,7 @@ public class Player implements flip.sim.Player
     public SuperSmallNStrategy mSuperSmallNStrategy;
 
     public Player(){
-        random = new Random();
+        random = new Random(seed);
     }
 
     // Initialization function.
@@ -86,7 +86,7 @@ public class Player implements flip.sim.Player
 
         // Update the piece store location
         // The moved pieces can be accessed using pieceStore.movedPieces
-        this.pieceStore.updatePieces(playerPieces, opponentPieces);
+        this.pieceStore.updatePieces(opponentPieces);
 
         List<Pair<Integer, Point>> moves = new ArrayList<Pair<Integer, Point>>();
 
@@ -102,29 +102,35 @@ public class Player implements flip.sim.Player
 
         // Priority 3: Runner+Wall+AntiWall Strategy
         else {
-        try {
             this.mAntiWallStrategy.updateStatus();
-
-            // If wall is detected, send runner immediately to disrupt
-            if(this.mAntiWallStrategy.status == WallDetectionStatus.WALL_HOLE_DETECTED){
-                this.mAntiWallStrategy.getAntiWallMove(moves, numMoves);
+            
+            // Runner needs to pass the wall first
+            if(this.mRunnerStrategy.status==RunnerStatus.RUNNER_SET){
+                try {
+                    this.mRunnerStrategy.getRunnerMove(moves, numMoves);
+                } catch (Exception e) {
+                    Log.log(e.toString());
+                }
             }
 
-            // Runner needs to pass the wall first
-            if(this.mRunnerStrategy.status==RunnerStatus.RUNNER_SET)
-                this.mRunnerStrategy.getRunnerMove(moves, numMoves);
-
             // Wall Strategy
-            if (!this.mWallStrategy.WALL_COMPLETED)
-                this.mWallStrategy.getWallMove(moves, numMoves);
+            if (!this.mWallStrategy.WALL_COMPLETED){
+                try {
+                    this.mWallStrategy.getWallMove(moves, numMoves);
+                } catch (Exception e) {
+                    Log.log(e.toString());
+                    System.out.println(e.getLocalizedMessage());
+                }
+            }
 
             // Post wall runner strategy: FIRST RUNNER RUNS
-            if(this.mRunnerStrategy.status==RunnerStatus.RUNNER_PASSED_WALL)
-                this.mRunnerStrategy.getRunnerMove(moves, numMoves);
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+            if(this.mRunnerStrategy.status==RunnerStatus.RUNNER_PASSED_WALL){
+                try {
+                    this.mRunnerStrategy.getRunnerMove(moves, numMoves);
+                } catch (Exception e) {
+                    Log.log(e.toString());
+                }
+            }
         }
         return moves;
     }
