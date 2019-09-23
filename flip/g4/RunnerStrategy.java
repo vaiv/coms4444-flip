@@ -60,7 +60,10 @@ class RunnerStrategy{
     }
 
     private boolean checkRunnerReachedEnd(){
-        Point runnerLoc = this.mPlayer.playerPieces.get(this.runner);
+        Point runnerLoc = this.mPlayer.pieceStore.myPieces.get(this.runner);
+        if(runnerLoc.x < -21.0){
+            Log.log(runnerLoc.toString());
+        }
         return (this.isPlayer1) ? runnerLoc.x < -21.0 : runnerLoc.x > 21.0;
     }
     
@@ -78,19 +81,34 @@ class RunnerStrategy{
 
             while(moves.size() > prev && moves.size() < numMoves){
                 Pair<Integer, Point> move;
-                prev = moves.size() - 1;
+                prev = moves.size();
 
                 if((move = Utilities.getForwardMove(
-                    this.runner, this.mPlayer)) != null) moves.add(move);
+                    this.runner, this.mPlayer)) != null){
+                        this.mPlayer.pieceStore.movePiece(move);
+                        moves.add(move);
+                    }
                 
                 else if((move = Utilities.getRandomMove(
-                    this.runner, this.mPlayer, 90)) != null)  moves.add(move);
+                    this.runner, this.mPlayer, 90)) != null) {
+                        this.mPlayer.pieceStore.movePiece(move);
+                        moves.add(move);
+                    }
 
                 else if((move = Utilities.getRandomMove(
-                    this.runner, this.mPlayer, 180)) != null) moves.add(move);
+                    this.runner, this.mPlayer, 180)) != null){
+                        this.mPlayer.pieceStore.movePiece(move);
+                        moves.add(move);
+                    }
 
                 else if((move = Utilities.getRandomMove(
-                    this.runner, this.mPlayer, 270)) != null) moves.add(move);
+                    this.runner, this.mPlayer, 270)) != null){
+                        this.mPlayer.pieceStore.movePiece(move);
+                        moves.add(move);
+                    }
+                
+                this.updateRunnerStatus();
+                if(this.status==RunnerStatus.RUNNER_REACHED_END) break;
             }
         }
 
