@@ -76,7 +76,9 @@ public class Player implements flip.sim.Player {
         this.diameter_piece = diameter_piece;
         this.pieces = pieces;
         this.wallX = -sign * 20.0;
-        this.calculateMatching();
+        if(n >= 11) {
+            this.calculateMatching();
+        }
     }
 
     public void calculateMatching() {
