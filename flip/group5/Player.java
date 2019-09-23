@@ -201,6 +201,8 @@ public class Player implements flip.sim.Player
                 Pair<Integer, Point> move_around = getAroundWithPreferredAngle(piece_id, move, player_pieces, opponent_pieces, isplayer1, preferred_angle);
                 //-10000 means there is no valid move possible
                 if (move_around.getValue().x != -10000){
+                    System.out.println("Runner Position: " + player_pieces.get(piece_id));
+                    System.out.println("Runner Move: " + move_around.getValue());
                     moves.add(move_around);
                 }
             }
@@ -485,8 +487,6 @@ public class Player implements flip.sim.Player
                 Point m2 = getNewPointFromOldPointAndAngle(m1, theta);
                 moves.add(m2);
             } else {
-                // public Pair<Integer, Point> getAroundWithPreferredAngle(Integer runner_id, Pair<Integer, Point> invalid_move, HashMap<Integer, Point> player_pieces,
-                                                            // HashMap<Integer, Point> opponent_pieces, boolean isplayer1, double preferred_angle){
                 Pair<Integer, Point> p = getAroundWithPreferredAngle(current_id, new Pair<Integer, Point>(current_id, m1), player_pieces, opponent_pieces, this.isplayer1, theta);
                 if (check_validity(next, player_pieces, opponent_pieces)) {
                     moves.add(p.getValue());
@@ -543,13 +543,12 @@ public class Player implements flip.sim.Player
         return new Point(0.0, 0.0);
     }
 
-
     //this function takes in the runner piece current position, obstacle position, and calculate theta
     //if usualway is true, we are minimizing the off-course angle. i.e., if opponent on left, flip to right and vice versa
     //if usualway is false, then flip to the other side
-    public double getAroundTheta(Integer runner_id, Point curr_position, Point obstacle, boolean usualway, boolean isplayer1, double preferred_angle){
-        double m1 = curr_position.y - obstacle.y;
-        double m2 = curr_position.x - obstacle.x;
+        public double getAroundTheta(Integer runner_id, Point curr_position, Point obstacle, boolean usualway, boolean isplayer1, double preferred_angle){
+        double m1 = Math.abs(curr_position.y - obstacle.y);
+        double m2 = Math.abs(curr_position.x - obstacle.x);
         double m3 = Math.sqrt(m1*m1 + m2*m2);
         double cos_a2 = (m3*m3 + m2*m2 - m1*m1) / (2 * m2 * m3);
         double cos_a1 = m3*m3 / (diameter_piece * diameter_piece * m3);
@@ -628,8 +627,8 @@ public class Player implements flip.sim.Player
         Pair<Integer, Point> move2 = getSingleValidMove(runner_id, player_pieces, opponent_pieces, theta1, isplayer1);
         if (move2 != null) {return move2;}
 
-        theta1 = getAroundTheta(runner_id, curr_position, obstacle, false, isplayer1, preferred_angle);
-        Pair<Integer, Point> move3 = getSingleValidMove(runner_id, player_pieces, opponent_pieces, theta1, isplayer1);
+        double theta2 = getAroundTheta(runner_id, curr_position, obstacle, false, isplayer1, preferred_angle);
+        Pair<Integer, Point> move3 = getSingleValidMove(runner_id, player_pieces, opponent_pieces, theta2, isplayer1);
         if (move3 != null) {return move3;}
         else {return getNullMove(runner_id);}  //want to return null move here. I don't know to return null directly.
         //version 2: we can give a final shot by go to a randomnized angle, but I don't use it for now
