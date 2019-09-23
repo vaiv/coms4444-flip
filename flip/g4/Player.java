@@ -1,4 +1,4 @@
-// 9/18 deliverable UPDATED SO THAT SINGLE PIECE MOVES TWICE
+// 9/23 deliverable
 package flip.g4;
 
 import java.util.List;
@@ -96,7 +96,7 @@ public class Player implements flip.sim.Player
         }
         
         // Priority 2: N < 15
-        else if (playerPieces.size() < 15){
+        else if (playerPieces.size() <= 15) {
             this.mSmallNStrategy.getSmallNMove(moves, numMoves);
         }
 
