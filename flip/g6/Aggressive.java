@@ -24,7 +24,13 @@ public class Aggressive extends Move {
 		this.n = n;
 		this.diameter_piece = diameter_piece;
 	}
-
+	
+	@Override
+	public void updatePieceInfo(HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces) {
+		this.player_pieces = player_pieces;
+		this.opponent_pieces = opponent_pieces;
+	}
+	
 	@Override
 	public boolean isPossible() {
 		return false; // TODO: Change this implementation
@@ -79,7 +85,8 @@ public class Aggressive extends Move {
 		case 7:
 		case 8:
 		case 9:
-		case 10: {
+		case 10: 
+		case 11: {
 			HashMap<Integer, Point> unfinished_pieces = getUnfinishedPlayerPieces(player_pieces, isplayer1, Approach.AGGRESSIVE);
 			HashMap<Integer, Point> closest_pieces = getClosestPointsToOpponentBoundary(unfinished_pieces.size(), unfinished_pieces, isplayer1);
 			double posMarker = isplayer1 ? 10.0 : -10.0;

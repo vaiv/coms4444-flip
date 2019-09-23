@@ -1,4 +1,5 @@
 package flip.g6;
+
 import java.util.List;
 import java.util.Collections;
 import java.util.Map;
@@ -9,11 +10,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 
 import flip.sim.Point;
-import flip.g6.Move.Approach;
 import flip.sim.Board;
 import flip.sim.Log;
 
-public class Player2 extends Move implements flip.sim.Player
+public class Player4 implements flip.sim.Player
 {
 	private int seed = 42;
 	private Random random;
@@ -30,13 +30,13 @@ public class Player2 extends Move implements flip.sim.Player
     // Wall Point Positions
 	private static final double EPSILON = 0.001;
 
-    private static final List<Double> WALL_POSITION_X = new ArrayList<>(Arrays.asList(-17.30, -13.84, -10.38, -6.92, -3.46, 0.00, 3.46, 6.92, 10.38, 13.84, 17.30));
+    private static final List<Double> WALL_POSITION_X = new ArrayList<>(Arrays.asList(-17.30, -13.84, -10.83, -6.92, -3.46, 0.00, 3.46, 6.92, 10.83, 13.84, 17.30));
     private ArrayList<Point> wall_pos_list = new ArrayList<Point>();  
     private ArrayList<Point> wall_pos_list_second = new ArrayList<Point>();  
     private HashMap<Integer, Point> wall_pieces = new HashMap<Integer, Point>();
     private HashMap<Integer, Point> wall_pieces_second = new HashMap<Integer, Point>();
 
-	public Player2()
+	public Player4()
 	{
 		random = new Random(seed);
 	}
@@ -63,14 +63,12 @@ public class Player2 extends Move implements flip.sim.Player
          if(!dynamicWall_Init){
             
             InitWall(player_pieces, opponent_pieces, moves);
-//            System.out.println(moves.size());
-            return moves;
          }
          
-//         if(!dynamicWall_Second){
-//            
-//            SecondWall(player_pieces, opponent_pieces, moves);
-//         }
+         if(!dynamicWall_Second){
+            
+            SecondWall(player_pieces, opponent_pieces, moves);
+         }
 		 
 
 
@@ -103,70 +101,24 @@ public class Player2 extends Move implements flip.sim.Player
         Point destination;
         Pair<Integer, Point> move;
 
+
         for (HashMap.Entry<Integer, Point> entry : wall_pieces.entrySet()) {
             id = entry.getKey();
-            destination = entry.getValue();
-
-            
+            destination = entry.getValue(); 
+           
             List<Point> points = moveCurrentToTarget(id, player_pieces.get(id), destination, player_pieces, opponent_pieces);
-            List<Pair<Integer, Point>> possMoves = new ArrayList<>();
+
             for (Point point: points) {
                 move = new Pair(id, point);
-                possMoves.add(move);
-//                if (check_validity(move, player_pieces, opponent_pieces)) {
-//                    moves.add(move);
-//                    player_pieces.put(id, point);
-//                } else {
-//                    break;
-//                }
+                if (check_validity(move, player_pieces, opponent_pieces)) {
+                    moves.add(move);
+                    player_pieces.put(id, point);
+                } else {
+                    break;
+                }
             }
-            
-            System.out.println("Possible moves: " + possMoves.size());
-            
-            HashMap<Integer, Point> unfinished_pieces = getUnfinishedPlayerPieces(opponent_pieces, !isplayer1, Approach.AGGRESSIVE);
-			HashMap<Integer, Point> closest_unfinished_pieces = getClosestPointsToOpponentBoundary(1, unfinished_pieces, !isplayer1);
-			if(closest_unfinished_pieces.size() != 0) {
-				for(Integer id2 : closest_unfinished_pieces.keySet()) {
-					int possMoveID = -1;
-					double distanceY = 10000000;
-					int index = -1;
-					for(int i = 0; i < possMoves.size(); i++) {
-						Pair<Integer, Point> pair = possMoves.get(i);
-						double newDistanceY = Math.abs(pair.getValue().y - closest_unfinished_pieces.get(id2).y);
-						if(newDistanceY < distanceY) {
-							possMoveID = pair.getKey();
-							distanceY = newDistanceY;
-							index = i;
-						}
-					}
-					if((isplayer1 && closest_unfinished_pieces.get(id2).x > -20) || (!isplayer1 && closest_unfinished_pieces.get(id2).x < 20)) {
-						moves.add(possMoves.get(index));
-						possMoveID = -1;
-						distanceY = 10000000;
-						int newIndex = -1;
-						for(int i = 0; i < possMoves.size(); i++) {
-							if(i == index)
-								continue;
-							Pair<Integer, Point> pair = possMoves.get(i);
-							double newDistanceY = Math.sqrt(Math.pow(pair.getValue().y - closest_unfinished_pieces.get(id2).y, 2));
-							if(newDistanceY < distanceY) {
-								possMoveID = pair.getKey();
-								distanceY = newDistanceY;
-								newIndex = i;
-							}
-						}
-						moves.add(possMoves.get(newIndex));
-						possMoves.remove(index);
-						possMoves.remove(newIndex);
-						moves.addAll(possMoves);
-						System.out.println("Actual moves: " + moves.size());
-						return moves;
-					}
-				}
-				moves.addAll(possMoves);
-			}
-
         }
+ 
         return moves;
     }
 
@@ -176,7 +128,9 @@ public class Player2 extends Move implements flip.sim.Player
         Point destination;
         Pair<Integer, Point> move;
 
+
         for (HashMap.Entry<Integer, Point> entry : wall_pieces_second.entrySet()) {
+
             id = entry.getKey();
             destination = entry.getValue(); 
            
@@ -240,6 +194,23 @@ public class Player2 extends Move implements flip.sim.Player
             }
         }
         return id;
+    }
+
+    private Integer NearestOpponent(HashMap<Integer, Point> opponent_pieces){
+
+    	double x = this.isplayer1 ? 19.99 : -19.99;
+
+    	Integer id = 0;
+    	double nearest_x = 0;
+    	Point p;
+    	for(int i = 0; i < n; i++){
+    		p = opponent_pieces.get(i);
+    		if(nearest_x > Math.abs(p.x - x) && p.x <= 20 && p.x >= -20){
+    			id = i;
+    			nearest_x = p.x;
+    		}
+    	}
+    	return id;
     }
 
     
@@ -323,32 +294,5 @@ public class Player2 extends Move implements flip.sim.Player
         new_position.x += this.isplayer1 ? -delta_x : delta_x;
         new_position.y += this.isplayer1 ? -delta_y : delta_y;
         return new_position;
-    }
-
-	@Override
-	public boolean isPossible() {
-		// TODO Auto-generated method stub
-		return false;
-	}
-
-	@Override
-	public Pair<Integer, Point> getMove() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public Pair<Integer, Point> getHybridMove() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public void updatePieceInfo(HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces) {
-		// TODO Auto-generated method stub
-		
-	}
-
-    
-   
+    }  
 }
