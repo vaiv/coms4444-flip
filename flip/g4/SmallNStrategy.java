@@ -1,4 +1,4 @@
-// UPDATED WITH N/3 STRAT
+// Updated with improved strats for n < 12 and n < 15
 package flip.g4;
 
 import java.util.List;
@@ -255,13 +255,14 @@ class SmallNStrategy{
     //          ORIGINAL
         List<Pair<Integer,Point>>         orderedXProgress = rankXProgressOutsideEndzone(playerPieces, isPlayer1);
         if (orderedXProgress.size() == 0 || Math.random() < 0.1) orderedXProgress = rankXProgress(playerPieces, isPlayer1);
+        //List<Pair<Integer,Point>>         inSoftEndZoneList = getInSoftEndZoneList(orderedXProgress, isPlayer1); // inSoftEndZoneList.size()
 
         for (int angle = 0; angle < 180; angle++) {
             // choose random direction
             double theta = ((random.nextDouble() > 0.5)? -1 : 1) *angle *Math.PI/180;
             double dx = Math.cos(theta) * (isPlayer1? -1 : 1) * diameter_piece, dy = Math.sin(theta) * diameter_piece;
 
-            for (int i = orderedXProgress.size() - 1; i >= 0; i--) {
+            for (int i = orderedXProgress.size() /* - inSoftEndZoneList.size() */- 1; i >= 0; i--) {
                 Pair<Integer,Point> pair = orderedXProgress.get(i);
                 Point oldPosition = pair.getValue();
                 
@@ -279,6 +280,11 @@ class SmallNStrategy{
 
         return null;        
     }
+    
+    //getInSoftEndZoneList(orderedXProgress, isPlayer1)
+    //private Pair<Integer, Point> getInSoftEndZoneList( List<Pair<Integer,Point>> orderedXProgress, boolean isPlayer1 ) {
+        
+    //}
 
     private Pair<Integer, Point> getNewForwardPieceMove( HashMap<Integer, Point> playerPieces, HashMap<Integer, Point> opponentPieces, boolean isPlayer1 ) {
             // get all our pieces from closest to farthest
@@ -363,40 +369,49 @@ class SmallNStrategy{
             HashMap<Integer, Point> opponentPieces = this.mPlayer.opponentPieces;
             boolean isPlayer1 = this.mPlayer.isPlayer1;
 
-            while (moves.size() < numMoves) {
-                Pair<Integer, Point> move = null;
-                while (rankXProgressOutsideEndzone(playerPieces, isPlayer1).size() > n - n/3) { //n - n/3
-                    //System.out.println("here!");
-                    move = getNewForwardPieceMove(playerPieces, opponentPieces, isPlayer1);
+            if (n < 12) {
+                while (moves.size() < numMoves) {
+                    Pair<Integer, Point> move = null;
+                    while (rankXProgressOutsideEndzone(playerPieces, isPlayer1).size() > n - n/5) { //n - n/3 ************ CHANGE
+                        //System.out.println("here!");
+                        move = getNewForwardPieceMove(playerPieces, opponentPieces, isPlayer1);
+                        updateMoveList(playerPieces, move, moves);
+                    }
+                    move = getBackwardPieceMove(playerPieces, opponentPieces, isPlayer1);
                     updateMoveList(playerPieces, move, moves);
+
+
+                    // move the closest piece that can move forward
+            //        move = getForwardMove(playerPieces, opponentPieces, isPlayer1, true);
+            //        updateMoveList(playerPieces, move, moves);
+
+                    // move the farthest away piece that can move forward
+            //        move = getForwardMove(playerPieces, opponentPieces, isPlayer1, false);
+            //        updateMoveList(playerPieces, move, moves);
+
+                    // choose best forwardish direction as next option 
+                    //             move = getBestForwardishMove(playerPieces, opponentPieces, isPlayer1, true);
+                    //             if (move != null) moves.add(move);             
+                    //             move = getBestForwardishMove(playerPieces, opponentPieces, isPlayer1, false);
+                    //             if (move != null) moves.add(move);             
+
+                    // choose valid random forwardish to less forward directions as next options
+                    // Can first optimize by looking at only angles you haven't already looked at
+                    // Ideally, would have an improved function [ getBestForwardishMove(), not yet built ] that finds the best move
+            //         move = getRandomMove(playerPieces, opponentPieces, isPlayer1, 90);
+            //        updateMoveList(playerPieces, move, moves);
+            //        move = getRandomMove(playerPieces, opponentPieces, isPlayer1, 180);
+            //        updateMoveList(playerPieces, move, moves);             
+
+            //        move = getRandomMove(playerPieces, opponentPieces, isPlayer1, 270);
+            //        updateMoveList(playerPieces, move, moves);             
                 }
+            }
+            // for 12 < n <= 15 // just backward move (to move wall) since you're implementing a runner wall
+            else while (moves.size() < numMoves) {
+                Pair<Integer, Point> move = null;
                 move = getBackwardPieceMove(playerPieces, opponentPieces, isPlayer1);
-                updateMoveList(playerPieces, move, moves);
-                
-                // move the closest piece that can move forward
-        //        move = getForwardMove(playerPieces, opponentPieces, isPlayer1, true);
-        //        updateMoveList(playerPieces, move, moves);
-
-                // move the farthest away piece that can move forward
-        //        move = getForwardMove(playerPieces, opponentPieces, isPlayer1, false);
-        //        updateMoveList(playerPieces, move, moves);
-
-                // choose best forwardish direction as next option 
-                //             move = getBestForwardishMove(playerPieces, opponentPieces, isPlayer1, true);
-                //             if (move != null) moves.add(move);             
-                //             move = getBestForwardishMove(playerPieces, opponentPieces, isPlayer1, false);
-                //             if (move != null) moves.add(move);             
-
-                // choose valid random forwardish to less forward directions as next options
-                // Can first optimize by looking at only angles you haven't already looked at
-                // Ideally, would have an improved function [ getBestForwardishMove(), not yet built ] that finds the best move
-        //         move = getRandomMove(playerPieces, opponentPieces, isPlayer1, 90);
-        //        updateMoveList(playerPieces, move, moves);
-        //        move = getRandomMove(playerPieces, opponentPieces, isPlayer1, 180);
-        //        updateMoveList(playerPieces, move, moves);             
-
-        //        move = getRandomMove(playerPieces, opponentPieces, isPlayer1, 270);
-        //        updateMoveList(playerPieces, move, moves);             
+                updateMoveList(playerPieces, move, moves);          
             }
 
             return moves;
