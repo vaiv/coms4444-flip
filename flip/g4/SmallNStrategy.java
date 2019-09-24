@@ -1,4 +1,4 @@
-// Updated with improved strats for n < 12 and n < 15
+// UPDATED WITH N/3 STRAT
 package flip.g4;
 
 import java.util.List;

@@ -1,3 +1,5 @@
+// this is the most up-to-date from me 9/24 4am
+// from CLONED VAIV at 6:25pm 9/23 (merge issue should be gone!!!!)
 // updated to have a more effective strat for n = 12 thru 15
 
 package flip.g4;
@@ -96,8 +98,8 @@ public class Player implements flip.sim.Player
             this.mSuperSmallNStrategy.getSuperSmallNMove(moves, numMoves);
         }
         
-        // Priority 2a: N < 11
-        else if (playerPieces.size() < 11) {
+        // Priority 2a: N < 12
+        else if (playerPieces.size() < 12) {
             this.mSmallNStrategy.getSmallNMove(moves, numMoves);
         }
         
