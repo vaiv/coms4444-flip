@@ -40,15 +40,31 @@ public class PieceStore{
         this.myPieces.replace(move.getKey(), move.getValue());
     }
 
-    public void updatePieces(HashMap<Integer, Point> pieces){
+    public void updatePieces(
+        HashMap<Integer, Point> playerPieces,
+        HashMap<Integer, Point> opponentPieces){
+        
         this.movedPieces = new HashMap<Integer, Pair<Point, Point>>();
         for(Integer idx: this.oppPieces.keySet()){
             Point oldLoc = this.oppPieces.get(idx);
-            Point newLoc = pieces.get(idx);
+            Point newLoc = opponentPieces.get(idx);
 
             if(!oldLoc.equals(newLoc)){
                 movedPieces.put(idx, new Pair<Point, Point>(oldLoc, newLoc));
                 this.oppPieces.replace(idx, newLoc);
+            }
+        }
+
+        for(Integer idx: this.myPieces.keySet()){
+            Point oldLoc = this.myPieces.get(idx);
+            Point newLoc= playerPieces.get(idx);
+
+            if(oldLoc.x != newLoc.x || oldLoc.y != newLoc.y){
+                // Log.log(String.format("INCORRECT POSITION %d [%s] [%s]",
+                    // idx, oldLoc.toString(), newLoc.toString())
+                // );
+
+                this.myPieces.replace(idx, newLoc);
             }
         }
     }
