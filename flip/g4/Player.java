@@ -1,4 +1,5 @@
-// 9/23 deliverable
+// updated to have a more effective strat for n = 12 thru 15
+
 package flip.g4;
 
 import java.util.List;
@@ -50,7 +51,7 @@ public class Player implements flip.sim.Player
     public SuperSmallNStrategy mSuperSmallNStrategy;
 
     public Player(){
-        random = new Random(seed);
+        random = new Random();
     }
 
     // Initialization function.
@@ -86,7 +87,7 @@ public class Player implements flip.sim.Player
 
         // Update the piece store location
         // The moved pieces can be accessed using pieceStore.movedPieces
-        this.pieceStore.updatePieces(opponentPieces);
+        this.pieceStore.updatePieces(playerPieces, opponentPieces);
 
         List<Pair<Integer, Point>> moves = new ArrayList<Pair<Integer, Point>>();
 
@@ -95,42 +96,56 @@ public class Player implements flip.sim.Player
             this.mSuperSmallNStrategy.getSuperSmallNMove(moves, numMoves);
         }
         
-        // Priority 2: N < 15
+        // Priority 2a: N < 11
+        else if (playerPieces.size() < 11) {
+            this.mSmallNStrategy.getSmallNMove(moves, numMoves);
+        }
+        
+        // Priority 2b: N <= 15
         else if (playerPieces.size() <= 15) {
+            this.mAntiWallStrategy.updateStatus();
+
+            // If wall is detected, send runner immediately to disrupt
+           if(this.mAntiWallStrategy.status == WallDetectionStatus.WALL_HOLE_DETECTED){
+                this.mAntiWallStrategy.getAntiWallMove(moves, numMoves);
+            }
+
+            // Runner needs to pass the wall first
+            if(this.mRunnerStrategy.status==RunnerStatus.RUNNER_SET)
+                this.mRunnerStrategy.getRunnerMove(moves, numMoves);
+
+            // Wall Strategy
+            if (!this.mWallStrategy.WALL_COMPLETED)
+                this.mWallStrategy.getWallMove(moves, numMoves);
+            
             this.mSmallNStrategy.getSmallNMove(moves, numMoves);
         }
 
         // Priority 3: Runner+Wall+AntiWall Strategy
         else {
+        try {
             this.mAntiWallStrategy.updateStatus();
-            
-            // Runner needs to pass the wall first
-            if(this.mRunnerStrategy.status==RunnerStatus.RUNNER_SET){
-                try {
-                    this.mRunnerStrategy.getRunnerMove(moves, numMoves);
-                } catch (Exception e) {
-                    Log.log(e.toString());
-                }
+
+            // If wall is detected, send runner immediately to disrupt
+            if(this.mAntiWallStrategy.status == WallDetectionStatus.WALL_HOLE_DETECTED){
+                this.mAntiWallStrategy.getAntiWallMove(moves, numMoves);
             }
+
+            // Runner needs to pass the wall first
+            if(this.mRunnerStrategy.status==RunnerStatus.RUNNER_SET)
+                this.mRunnerStrategy.getRunnerMove(moves, numMoves);
 
             // Wall Strategy
-            if (!this.mWallStrategy.WALL_COMPLETED){
-                try {
-                    this.mWallStrategy.getWallMove(moves, numMoves);
-                } catch (Exception e) {
-                    Log.log(e.toString());
-                    System.out.println(e.getLocalizedMessage());
-                }
-            }
+            if (!this.mWallStrategy.WALL_COMPLETED)
+                this.mWallStrategy.getWallMove(moves, numMoves);
 
             // Post wall runner strategy: FIRST RUNNER RUNS
-            if(this.mRunnerStrategy.status==RunnerStatus.RUNNER_PASSED_WALL){
-                try {
-                    this.mRunnerStrategy.getRunnerMove(moves, numMoves);
-                } catch (Exception e) {
-                    Log.log(e.toString());
-                }
-            }
+            if(this.mRunnerStrategy.status==RunnerStatus.RUNNER_PASSED_WALL)
+                this.mRunnerStrategy.getRunnerMove(moves, numMoves);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         }
         return moves;
     }
