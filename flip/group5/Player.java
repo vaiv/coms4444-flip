@@ -17,15 +17,19 @@ public class Player implements flip.sim.Player
     private boolean isplayer1;
     private Integer n;
     private Double diameter_piece;
-    private boolean dispatch_runner_mode = true;
-    private boolean defense_mode = false;  // when true, we play all moves to build wall, else all moves are offense
-    private boolean make_run_mode = false;
-    private Point goal;  // to be set after wall is made
-    private Integer runnerID; // dito as above
+    private Integer runnerID;
     private int turn_counter = 0;
-    private double prefer_theta = isplayer1 ? -70 : 70;
+    private double prefer_theta = isplayer1 ? -1 * Math.PI/4 : Math.PI/4;
+    private Set<Integer> previousRunners = new HashSet<>();
+    private HashMap<Integer, Integer> numRunnerMoves = new HashMap<>();
 
-    private static double BLOCKADE_LINE = 21;
+    private enum STATES {
+        DEFENSE, OFFENSE, RELEASE_RUNNER;
+    }
+
+    private STATES GAMESTATE = STATES.DEFENSE;
+
+    private static double BLOCKADE_LINE = 22;
     private static final double EPSILON = 1E-7;
     private static final double B1  = -17.30;
     private static final double B2  = 17.30;
@@ -52,7 +56,6 @@ public class Player implements flip.sim.Player
         this.n = n;
         this.isplayer1 = isplayer1;
         this.diameter_piece = diameter_piece;
-        this.setBlockadeLine(pieces);
         this.initializeBlockadeList(isplayer1);
         this.computeBlockadeMapMWBM(pieces);
     }
@@ -62,51 +65,70 @@ public class Player implements flip.sim.Player
     */
     public List<Pair<Integer, Point>> getMoves(Integer num_moves, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, boolean isplayer1) {
         this.turn_counter++;
-        if (this.n <= 11) { // just play forward if we can't play wall strategy
+        if (this.n <= 11) { // play small n strategy
             return getMovesSmallN(num_moves, player_pieces, opponent_pieces, isplayer1);
         }
+        else {
+            return getMovesLargeN(num_moves, player_pieces, opponent_pieces, isplayer1);
+        }
+    }
 
-        // n > 11, play wall strategy, which has 3 modes or game states
-        if (this.dispatch_runner_mode) {  //get runner in front of barrier line
-            identifyRunner(player_pieces, isplayer1);
-            refreshGameState(player_pieces, isplayer1);
+    // remember to tweak this with experience
+    private int numOfInitialRunners(int n) {
+        if (n < 25) {
+            return 2;
+        }
+        else {
+            return 1;
+        }
+    }
+
+    private boolean canScoreInOneMove(int id, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, boolean isplayer1) {
+        Pair<Integer, Point> move = forceMove(id, player_pieces, opponent_pieces, 0, isplayer1, 1);
+        if (isPointInEndZone(move.getValue(), isplayer1)) {
+            return true;
+        }
+        return false;
+    }
+
+    private List<Pair<Integer, Point>> getMovesLargeN(Integer num_moves, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, boolean isplayer1) {
+
+        if (this.n > 11 && this.n < 500 && this.previousRunners.size() < numOfInitialRunners(this.n)) {
             return getRunnerMoves(num_moves, player_pieces, opponent_pieces, isplayer1);
         }
 
-        else if (this.defense_mode) {  // Play defense.  Stop when barrier is formed.
-            refreshGameState(player_pieces, isplayer1);
-            if (this.defense_mode) {
-                return getDefenseMoves(player_pieces, opponent_pieces, isplayer1);
+        else if (!isBlockadeComplete(player_pieces)) {  // Play defense.  Stop when barrier is formed.
+            return getDefenseMoves(player_pieces, opponent_pieces, isplayer1);
+        }
+
+        else if (this.GAMESTATE == STATES.OFFENSE) {  // run run run
+            return getRunnerMoves(num_moves, player_pieces, opponent_pieces, isplayer1);
+        }
+
+        else if (this.GAMESTATE == STATES.RELEASE_RUNNER || (isBlockadeComplete(player_pieces))) {
+                int runner_id = identifyRunner(player_pieces, isplayer1);
+                return getReleaseRunnerMoves(runner_id, player_pieces, opponent_pieces);
+        }
+        return null;
+    }
+
+    private int identifyRunner(HashMap<Integer, Point> player_pieces, boolean isplayer1) {
+        int best_runner = 0;
+        double best_x = isplayer1 ? 1000 : -1000;
+        for (int i = 0; i < this.n; i++) {
+            double x = player_pieces.get(i).x;
+            boolean condition1 = !this.blockadeMap.values().contains(i);
+            boolean condition2 = isplayer1 ? (x < best_x) : (x > best_x);
+            boolean condition3 = !this.previousRunners.contains(i);
+            if (condition1 && condition2 && condition3) {
+                best_runner = i;
+                best_x = x;
             }
         }
-
-        else {   // play offense if runner is still not in the endzone
-            refreshGameState(player_pieces, isplayer1);
-            if (this.make_run_mode) {
-                return getRunnerMoves(num_moves, player_pieces, opponent_pieces, isplayer1);
-            }
-        }
-        return null;  // our wall should be up and runner at goal
+        return best_runner;
     }
 
-    private void refreshGameState(HashMap<Integer, Point> player_pieces, boolean isplayer1) {
-        if (isRunnerPastDefense(this.runnerID, player_pieces, isplayer1) && this.dispatch_runner_mode) {  // runner is far enough out, now build the wall starting next turn!
-            this.dispatch_runner_mode = false;
-            this.defense_mode = true;
-        }
-        if (this.defense_mode && isBlockadeComplete(player_pieces)) {
-            this.defense_mode = false;
-            this.make_run_mode = true;}
-        if (isPointInEndZone(player_pieces.get(runnerID), isplayer1)) {this.make_run_mode = false;}
-    }
-
-    private void identifyRunner(HashMap<Integer, Point> player_pieces, boolean isplayer1) {
-        if (this.runnerID == null) {
-            this.runnerID = getClosestRunnerNotInBlockade(player_pieces, isplayer1);  // identify runner
-        }
-    }
-
-    private void setBlockadeLine(Map<Integer, Point> pieces) {
+    private void setBlockadeLine(HashMap<Integer, Point> pieces) {
         for (Point p : pieces.values()) {
             this.BLOCKADE_LINE = Math.min(BLOCKADE_LINE, Math.abs(p.x)-diameter_piece);
         }
@@ -153,23 +175,7 @@ public class Player implements flip.sim.Player
                     return move;
                 }
                 else {
-                    return forceForwardMove(i, player_pieces, opponent_pieces, isplayer1);
-                }
-            }
-        }
-        return null;
-    }
-
-    private Pair<Integer, Point> forceForwardMove(int piece_id, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, boolean isplayer1) {
-        for (int theta=0; theta<90; theta++) {
-            Pair<Integer, Point> proposal_move = getSingleMove(piece_id, player_pieces, theta, isplayer1);
-            if (check_validity(proposal_move, player_pieces, opponent_pieces)) {
-                return proposal_move;
-            }
-            else {
-                proposal_move = getSingleMove(piece_id, player_pieces, -theta, isplayer1);
-                if (check_validity(proposal_move, player_pieces, opponent_pieces)) {
-                    return proposal_move;
+                    return forceMove(i, player_pieces, opponent_pieces, 0, isplayer1, 1);
                 }
             }
         }
@@ -180,52 +186,81 @@ public class Player implements flip.sim.Player
     // We move around our own peices if we are very close to scoring
     // otherwise we are willing to move around opponent peices unless it's a 1 vs 1 case and we calculate a disadvantage
     private List<Pair<Integer, Point>> handleAllStuck(int num_moves, List<Pair<Integer, Point>> moves, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, boolean isplayer1) {
-        // first priority, get peices in that are close to goal
-        Set<Integer> stuck = new HashSet<Integer>();
-        int i = 0;
-        int trials = this.n * 2;
-        while (moves.size() != num_moves && i < trials) {
-            i = i + 1;
-            int id = getFurthestForward(player_pieces, stuck, isplayer1);
-            Point proposed_piece = player_pieces.get(id);
-            if (isPointInEndZone(proposed_piece, isplayer1)) {
-                stuck.add(id);
+        Set<Integer> stuck = new HashSet<Integer>();  // set of pieces that we won't move
+        int i=0; int trials=100;
+        while (moves.size() != num_moves && i<trials) {
+            i++;
+            // First try moving around self
+            Pair<Integer, Point> move = moveAroundSelf(player_pieces, opponent_pieces, isplayer1);
+            if (move != null) {
+                addMove(moves, move, player_pieces);
+                continue;
             }
-            else if (isPieceCloseToEndZone(proposed_piece, isplayer1)) { // run in it regardless of who's blocking
-                boolean moveAdded = false;
-                Pair<Integer, Point> invalid_move = new Pair<Integer, Point>(id, new Point(proposed_piece.x + 2, proposed_piece.y));
-                Pair<Integer, Point> move = getAroundFanning(id, invalid_move, player_pieces, opponent_pieces, isplayer1, 0);
-                if (move != null && check_validity(move, player_pieces, opponent_pieces)) {  //otherwise this is giving me invalid but not null moves.  Figure this out.
+
+            // try moving piece still in own endzone
+            Integer id = getPieceStillHome(player_pieces, isplayer1);
+            if (id != null) {
+                move = forceMove(id, player_pieces, opponent_pieces, 0, isplayer1, 1);
+                if (move != null) {
                     addMove(moves, move, player_pieces);
-                    moveAdded = true;
-                }
-                else {  //double check that we can't find a forward move
-                    move = findAnyForwardMove(id, player_pieces, opponent_pieces, isplayer1);
-                    if (move != null && check_validity(move, player_pieces, opponent_pieces)) {
-                         addMove(moves, move, player_pieces);
-                         moveAdded = true;
+                    continue;
                     }
+            }
+
+            // all pieces blocked by opponent pieces, get furthest forward not in endzone
+            id = getFurthestForward(player_pieces, stuck, isplayer1);
+            Point proposed_piece = player_pieces.get(id);
+            if (isPointInEndZone(proposed_piece, isplayer1)) {  // add to stuck if piece is in endzone already
+                stuck.add(id);
+                continue;
+            }
+
+            // now we have a piece stuck on opponent.  Move around IF we only have 2 moves left to play or opponent is not stuck
+            if ((moves.size() == 2) || !isOpponentStuck(player_pieces, opponent_pieces, isplayer1)) {
+                move = forceMove(id, player_pieces, opponent_pieces, 0, isplayer1, 1);
+                if (move != null) {
+                    addMove(moves, move, player_pieces);
                 }
-                if (!moveAdded) {
+                move = forceMove(id, player_pieces, opponent_pieces, 0, isplayer1, 1);
+                if (move != null) {
+                    addMove(moves, move, player_pieces);
+                }
+                else {
                     stuck.add(id);
                 }
             }
-        }
-        if (moves.size() < num_moves) {
-            Pair<Integer, Point> move = makeRoom(player_pieces, opponent_pieces, isplayer1);
-            addMove(moves, move, player_pieces);
-        }
-        if (moves.size() < num_moves) {
-            Pair<Integer, Point> move = moveAroundSelf(player_pieces, opponent_pieces, isplayer1);
-            addMove(moves, move, player_pieces);
 
+            // if nothing else, try using the extra moves to make room in the endzone
+            if (moves.size() < num_moves) {
+                move = makeRoom(player_pieces, opponent_pieces, isplayer1);
+                addMove(moves, move, player_pieces);
+                continue;
+            }
         }
         return moves;
     }
 
+    private Integer getPieceStillHome(HashMap<Integer, Point> player_pieces, boolean isplayer1) {
+        for(int i=0; i < this.n; i++) {
+            Point piece = player_pieces.get(i);
+            if (isplayer1 ? piece.x > 22 : piece.x < -22) {
+                return i;
+            }
+        }
+        return null;
+    }
+
+    private boolean isOpponentStuck(HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, boolean isplayer1) {
+        for(int i=0; i < this.n; i++) {
+            Point piece = opponent_pieces.get(i);
+            if (!isOpponentBlockingUs(opponent_pieces, player_pieces, piece, !isplayer1)) {
+                return false;
+            }
+        }
+        return true;
+    }
 
     private Pair<Integer, Point> moveAroundSelf(HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, boolean isplayer1) {
-        System.out.print("CALLING MOVE AROUND SELF");
         // find piece that's blocked by self
         Set<Integer> stuck = new HashSet<Integer>();  // becomes a set of pieces to not move, not really stuck per say
         for(int i=0; i<50; i++) {
@@ -262,7 +297,8 @@ public class Player implements flip.sim.Player
 
     private Pair<Integer, Point> findAnyForwardMove(int piece_id, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, boolean isplayer1) {
         for (int theta = -90; theta < 90; theta++) {
-            Pair<Integer, Point> move = getSingleMove(piece_id, player_pieces, theta, isplayer1);
+            double theta_radians = theta * Math.PI / 180.0;
+            Pair<Integer, Point> move = getSingleMove(piece_id, player_pieces, theta_radians, isplayer1);
             if (check_validity(move, player_pieces, opponent_pieces)) {
                 return move;
             }
@@ -336,12 +372,12 @@ public class Player implements flip.sim.Player
         while (moves.size() != num_moves && i < trials) {
             i++;
             int proposed_piece;
-            if (allPeicesOut(player_pieces, isplayer1)) {
-                proposed_piece = getFurthestForward(player_pieces, stuck, isplayer1);
-            }
-            else {
-                proposed_piece = getFurthestBack(player_pieces, stuck, isplayer1);
-            }
+//            if (allPeicesOut(player_pieces, isplayer1)) {
+            proposed_piece = getFurthestForward(player_pieces, stuck, isplayer1);  // just always move furthest forward?
+//            }
+//            else {
+//                proposed_piece = getFurthestBack(player_pieces, stuck, isplayer1);
+//            }
             Pair<Integer, Point> move = getSingleMove(proposed_piece, player_pieces, 0, isplayer1);
             boolean inEndZone = isPointInEndZone(player_pieces.get(proposed_piece), isplayer1);
             if (check_validity(move, player_pieces, opponent_pieces) && !inEndZone) {
@@ -372,7 +408,7 @@ public class Player implements flip.sim.Player
     }
 
     private boolean weHaveCOMAdvantage(HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, boolean isplayer1) {
-        double threshhold = .5;
+        double threshhold = 1;
         double our_distance = meanDistanceFromEndZone(player_pieces, isplayer1);
         double opponent_distance = meanDistanceFromEndZone(opponent_pieces, !isplayer1);
         return our_distance < opponent_distance - threshhold;
@@ -423,49 +459,126 @@ public class Player implements flip.sim.Player
         return null;
     }
 
+    boolean isRunnerPastMiddle(Point runnerPoint , boolean isplayer1) {
+        if (isplayer1 ? runnerPoint.x < 0 : runnerPoint.x > 0) {
+            return true;
+        }
+        return false;
+    }
+
+//    public List<Pair<Integer, Point>> getReleaseRunnerMoves2(int runner_id, HashMap<Integer, Point> player_pieces,
+//                                                             HashMap<Integer, Point> opponent_pieces)
+//    {
+//        List<Pair<Integer, Point>> moves = new ArrayList<Pair<Integer, Point>>();
+//        if (player_pieces.get(runner_id).x < -25) {
+//            Pair<Integer, Point> move = forceMove(runner_id, player_pieces, opponent_pieces, -1 * Math.PI / 4, isplayer1, 1);
+//            addMove(moves, move, player_pieces);
+//        }
+//        else if (countInBounds(player_pieces, new Point(-23, -20), new Point(-20, -17)) == 1) {
+//            int piece_id = getHighestPiece(player_pieces);
+//            Pair<Integer, Point> move1 = forceMove(piece_id, player_pieces, opponent_pieces, Math.PI/1.8, isplayer1, 1);
+//            addMove(moves, move1, player_pieces);
+//            Pair<Integer, Point> move2 = forceMove(piece_id, player_pieces, opponent_pieces, Math.PI/1.8, isplayer1, 1);
+//            addMove(moves, move2, player_pieces);
+//        }
+//        return moves;
+//    }
+//
+//    private int getHighestPiece(HashMap<Integer, Point> player_pieces) {
+//        double highest = 20;
+//        int highest_piece_id = 0;
+//        for (int i=0; i<this.n; i++) {
+//            double y = player_pieces.get(i).y;
+//            if (y < highest) {
+//                highest = y;
+//                highest_piece_id = i;
+//            }
+//        }
+//        return highest_piece_id;
+//    }
+
     //getRunnerMoves tries to go straight, and if not, call getAround function.
     public List<Pair<Integer, Point>> getRunnerMoves(Integer num_moves, HashMap<Integer, Point> player_pieces,
                                                      HashMap<Integer, Point> opponent_pieces, boolean isplayer1)
     {
+        if (this.runnerID == null) {
+            this.runnerID = identifyRunner(player_pieces, isplayer1);
+        }
+
         List<Pair<Integer, Point>> moves = new ArrayList<Pair<Integer, Point>>();
         List<Pair<Integer, Point>> nearby_oppo = new ArrayList<Pair<Integer, Point>>();
         int num_trails = 30;
         int i = 0;
-        //we can default this to be 0 for now
-        double preferred_angle = 0;
-
+        double goal_angle;
+        if (isRunnerPastMiddle(player_pieces.get(this.runnerID), isplayer1)) {
+            goal_angle = getRunnerAngle(player_pieces.get(this.runnerID), opponent_pieces, isplayer1);
+        }
+        else {
+            goal_angle = 0;
+        }
 
         while(moves.size()!=num_moves && i< num_trails) {
-            //Integer piece_id = random.nextInt(n);
             Integer piece_id = this.runnerID;
-            Pair<Integer, Point> move = getSingleMove(piece_id, player_pieces, preferred_angle, isplayer1);
-            if(check_validity(move, player_pieces, opponent_pieces)) {
-                addMove(moves, move, player_pieces);
+            boolean notClose = isplayer1 ? player_pieces.get(piece_id).x >= -15 : player_pieces.get(piece_id).x <= 15;
+            if (notClose) {
+                Pair<Integer, Point> move = getSingleMove(piece_id, player_pieces, goal_angle, isplayer1);
+                if (check_validity(move, player_pieces, opponent_pieces)) {
+                    addMove(moves, move, player_pieces);
+                }
+                else {
+                    move = getAroundWithPreferredAngle(piece_id, move, player_pieces, opponent_pieces, isplayer1, goal_angle);
+                    boolean validTest1 = move.getValue().x != -10000.0 && move.getValue().y != -10000.0;
+                    boolean validTest2 = check_validity(move, player_pieces, opponent_pieces);
+                    if (validTest1 && validTest2) { // do we really need valid test 1?
+                        addMove(moves, move, player_pieces);
+                    }
+                    else {  // double check that we can't forceMove
+                        move = forceMove(piece_id, player_pieces, opponent_pieces, goal_angle, isplayer1, 1);
+                        if (check_validity(move, player_pieces, opponent_pieces)) {
+                            addMove(moves, move, player_pieces);
+                        }
+                    }
+                }
             }
 
             else {
-                //can't move to the preferred angle we try to getAround
-                //if the piece is far away from wall, use getAroundWithPreferredAngle
-                Pair<Integer, Point> move_around;
-                if (isplayer1 ? player_pieces.get(piece_id).x >= -15 : player_pieces.get(piece_id).x <= 15){
-                    move_around = getAroundWithPreferredAngle(piece_id, move, player_pieces, opponent_pieces, isplayer1, preferred_angle);
-                    //-10000 means there is no valid move possible
-                    if (move_around.getValue().x != -10000.0 && move_around.getValue().y != -10000.0 ){
-                        addMove(moves, move_around,player_pieces);
-                    }
-                }
-                else{
-                    // if a piece is close to the wall, switch to force move
-                    updateRunnerMomentum(piece_id, player_pieces, isplayer1);
-                    move_around = forceMove(piece_id, player_pieces, opponent_pieces, prefer_theta, isplayer1, 1);
-                    if (move_around!=null){
-                        addMove(moves,move_around,player_pieces);
-                    }
+                // if a piece is close to the wall, switch to force move
+                updateRunnerMomentum(piece_id, player_pieces, isplayer1);
+                Pair<Integer, Point> move = forceMove(piece_id, player_pieces, opponent_pieces, this.prefer_theta, isplayer1, 1);
+                if (move!=null){
+                    addMove(moves, move, player_pieces);
                 }
             }
             i++;
         }
+
+        incrementRunnerMoves();
+        if (runner_done(player_pieces, isplayer1)) {
+            this.previousRunners.add(this.runnerID);
+            this.runnerID = null;
+            this.GAMESTATE = STATES.DEFENSE;
+        }
         return moves;
+    }
+
+    private void incrementRunnerMoves() {
+        if (!this.numRunnerMoves.containsKey(this.runnerID)) {
+            this.numRunnerMoves.put(this.runnerID, 0);
+        }
+        int cur_count = this.numRunnerMoves.get(this.runnerID);
+        this.numRunnerMoves.put(this.runnerID, cur_count + 2);
+    }
+
+    private boolean runner_done(HashMap<Integer, Point> player_pieces, boolean isplayer1) {
+        boolean initialRunnersDone = this.previousRunners.size() >= numOfInitialRunners(this.n);
+        int max_runner_moves = initialRunnersDone ? 100 : 40;  // experiment with these numbers
+        Point runner_point = player_pieces.get(this.runnerID);
+        boolean condition1 = isPointInEndZone(runner_point, isplayer1);
+        boolean condition2 = this.numRunnerMoves.get(this.runnerID) > max_runner_moves;
+        if (condition1 || condition2) {
+            return true;
+        }
+        return false;
     }
 
     private void updateRunnerMomentum(int piece_id, HashMap<Integer, Point> player_pieces, boolean isplayer1) {
@@ -482,21 +595,6 @@ public class Player implements flip.sim.Player
 
     private boolean isMoveNull(Pair<Integer, Point> move) {
         return (move.getValue().x == -10000);
-    }
-
-    private Integer getClosestRunnerNotInBlockade(HashMap<Integer, Point> player_pieces, boolean isplayer1) {
-        int best_runner = 0;
-        double best_x = isplayer1 ? 1000 : -1000;
-        for (int i = 0; i < this.n; i++) {
-            double x = player_pieces.get(i).x;
-            boolean condition1 = !this.blockadeMap.values().contains(i);
-            boolean condition2 = isplayer1 ? (x < best_x) : (x > best_x);
-            if (condition1 && condition2) {
-                best_runner = i;
-                best_x = x;
-            }
-        }
-        return best_runner;
     }
 
     private boolean isRunnerPastDefense(Integer piece_id, HashMap<Integer, Point> player_pieces, boolean isplayer1) {
@@ -560,7 +658,7 @@ public class Player implements flip.sim.Player
         return piece_to_return;
     }
 
-    private int getFurthestForward(Map<Integer, Point> player_pieces, Set<Integer> stuck, boolean isplayer1) {
+    private int getFurthestForward(HashMap<Integer, Point> player_pieces, Set<Integer> stuck, boolean isplayer1) {
         double furthest_forward = isplayer1 ? 1000 : -1000;
         int piece_to_return = 0;
         for (int j = 0; j < n; j++) {
@@ -577,11 +675,11 @@ public class Player implements flip.sim.Player
 
     // This function breaks the map into k horizontal slices in front of location x.  It returns an array with
     // the number of opponent pieces in each of those slices.  This will be a useful high level feature.
-    private int[] getOpponentDensity(int k, double x, boolean opponent_is_player1, HashMap<Integer, Point> opponentPieces) {
+    private int[] getOpponentDensity(int k, boolean opponent_is_player1, HashMap<Integer, Point> opponentPieces) {
         int[] densities = new int[k];
-        double x_end = opponent_is_player1 ? 60 : -60;
-        double x_left = opponent_is_player1 ? x : x_end;
-        double x_right = opponent_is_player1 ? x_end : x;
+        double x_end = opponent_is_player1 ? 40 : -40;
+        double x_left = opponent_is_player1 ? 17 : x_end;
+        double x_right = opponent_is_player1 ? x_end : -17;
         for (int i=0; i<k; i++) {
             double boundWidth = 40.0 / k;
             double upperBound = -20 + boundWidth * i;
@@ -598,7 +696,7 @@ public class Player implements flip.sim.Player
         int min_idx = findMinIdx(opponentDensity);
         double bin_width = 40.0 / num_bins;
         double y = -10 + bin_width * min_idx;
-        double x = opponent_isplayer1 ? 21 : -21;
+        double x = opponent_isplayer1 ? 22 : -22;
         return new Point(x,y);
     }
 
@@ -613,6 +711,21 @@ public class Player implements flip.sim.Player
             }
         }
         return min_idx;
+    }
+
+    private double getRunnerAngle(Point runner_point, HashMap<Integer, Point> opponent_pieces, boolean isplayer1) {
+        int[] opponent_density = getOpponentDensity(3, !isplayer1, opponent_pieces);
+        Point goal = locateGoal(opponent_density, !isplayer1);
+        double dx = Math.abs(goal.x - runner_point.x);
+        double dy = Math.abs(goal.y - runner_point.y);
+        double angle;
+        // goal on right
+        if (isplayer1 ? goal.y < runner_point.y : goal.y > runner_point.y){
+            angle = Math.atan(dy/dx);
+        }
+        //goal on left
+        else{angle = (-1)*Math.atan(dy/dx);}
+        return angle;
     }
 
     // Below are Ethan's functions
@@ -639,10 +752,20 @@ public class Player implements flip.sim.Player
         return moves;
     }
 
+//    private void initializeBlockadeList(boolean isplayer1) {
+//        for (int i = 0; i < BLOCKADE_YCOORD.size(); i++) {
+//            Point blockade = new Point(isplayer1 ? BLOCKADE_LINE-EPSILON : -BLOCKADE_LINE+EPSILON, BLOCKADE_YCOORD.get(i));
+//            this.blockadeList.add(new Pair(i, blockade));
+//        }
+//    }
+
     private void initializeBlockadeList(boolean isplayer1) {
+        Integer counter = 0;
+        double delta = 0.025;
         for (int i = 0; i < BLOCKADE_YCOORD.size(); i++) {
-            Point blockade = new Point(isplayer1 ? BLOCKADE_LINE-EPSILON : -BLOCKADE_LINE+EPSILON, BLOCKADE_YCOORD.get(i));
+            Point blockade = new Point(isplayer1 ? BLOCKADE_LINE-EPSILON-counter*delta : -BLOCKADE_LINE+EPSILON+counter*delta, BLOCKADE_YCOORD.get(i));
             this.blockadeList.add(new Pair(i, blockade));
+            counter++;
         }
     }
 
@@ -676,7 +799,7 @@ public class Player implements flip.sim.Player
     }
 
     // Construct the blockade points and return a priority list of the blockade points we want to fill
-    private void computeBlockadeImportance(Map<Integer, Point> opponent_pieces, boolean isplayer1) {
+    private void computeBlockadeImportance(HashMap<Integer, Point> opponent_pieces, boolean isplayer1) {
         int opponent_piece_id = getFurthestForward(opponent_pieces, new HashSet<>(), !isplayer1);
         Point point = opponent_pieces.get(opponent_piece_id);
         Collections.sort(this.blockadeList, new Comparator<Pair<Integer, Point>>() {
@@ -701,6 +824,7 @@ public class Player implements flip.sim.Player
         double tmcy = target.y-current.y;
         double d = Math.sqrt(tmcx*tmcx + tmcy*tmcy);
         double theta = Math.atan(tmcy/tmcx);
+        theta = isInFrontOf(current, target) ? Math.PI + theta : theta;
         Pair<Integer, Point> m_valid = getSingleValidMove(id, player_pieces, opponent_pieces, theta, this.isplayer1);
         Pair<Integer, Point> m = getSingleMove(id, player_pieces, theta, this.isplayer1);
         Pair<Integer, Point> m_pref = getAroundWithPreferredAngle(id, m, player_pieces, opponent_pieces, this.isplayer1, theta);
@@ -719,10 +843,10 @@ public class Player implements flip.sim.Player
         } else if (d > 2*diameter_piece && d <= 3*diameter_piece) {
             if (m_valid != null) {
                 moves.add(m_valid);
-                // player_pieces.put(id, m_valid.getValue());
-                // moves.addAll(moveCurrentToTargetCloseTwice(m_valid, target, player_pieces, opponent_pieces));
-                // player_pieces.put(id, old_point);
-            } else if (m_pref != null) {
+                player_pieces.put(id, m_valid.getValue());
+                moves.addAll(moveCurrentToTargetCloseTwice(m_valid, target, player_pieces, opponent_pieces));
+                player_pieces.put(id, old_point);
+            } else if (m_pref != null && check_validity(m_pref, player_pieces, opponent_pieces)) {
                 moves.add(m_pref);
             } else {
                 moves.add(m_force);
@@ -736,7 +860,7 @@ public class Player implements flip.sim.Player
                     moves.add(m2);
                 }
                 player_pieces.put(id, old_point);
-            } else if (m_pref != null) {
+            } else if (m_pref != null && check_validity(m_pref, player_pieces, opponent_pieces)) {
                 moves.add(m_pref);
             } else {
                 moves.add(m_force);
@@ -761,6 +885,8 @@ public class Player implements flip.sim.Player
         double tpp2 = Math.atan(tmcy/tmcx);
         double tmp2 = Math.acos(Math.sqrt(tmcx2*tmcx2 + tmcy2*tmcy2)/2);
         double theta = tpp2 + tmp2;
+        //theta = isInFrontOf(current.getValue(), target) ? Math.PI + theta : theta;
+        tpp2 = isInFrontOf(current.getValue(), target) ? Math.PI + tpp2 : tpp2;
         double phi = tpp2 - tmp2;
         // if you are blocked, take the other angle first
         Pair<Integer, Point> move = getSingleValidMove(current_id, player_pieces, opponent_pieces, theta, this.isplayer1);
@@ -777,7 +903,7 @@ public class Player implements flip.sim.Player
                     return best_valid_approx_move;
                 } else {
                     Pair<Integer, Point> approx_move = getAroundWithPreferredAngle(current_id, best_approx_move, player_pieces, opponent_pieces, this.isplayer1, tpp2);
-                    if (approx_move != null) {
+                    if (approx_move != null && check_validity(approx_move, player_pieces, opponent_pieces)) {
                         return approx_move;
                     } else {
                         System.out.println("Forcing Move");
@@ -790,6 +916,7 @@ public class Player implements flip.sim.Player
 
     private Pair<Integer, Point> forceMove(int piece_id, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, double preference_theta, boolean isplayer1, double increment) {
         for (int delta=0; delta<=180; delta+=increment) {
+            double delta_radians = delta * Math.PI / 180.0;
             Pair<Integer, Point> proposal_move = getSingleMove(piece_id, player_pieces, preference_theta + delta, isplayer1);
             if (check_validity(proposal_move, player_pieces, opponent_pieces)) {
                 return proposal_move;
@@ -802,6 +929,10 @@ public class Player implements flip.sim.Player
             }
         }
         return null;
+    }
+
+    public boolean isInFrontOf(Point current, Point target) {
+        return this.isplayer1 ? current.x < target.x : current.x > target.x;
     }
 
     public List<Pair<Integer, Point>> moveCurrentToTargetCloseTwice(Pair<Integer, Point> current, Point target, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces) {
@@ -857,14 +988,6 @@ public class Player implements flip.sim.Player
         double x_diff = p2.x-p1.x;
         double y_diff = (p2.y-p1.y)/y_scale;
         return Math.sqrt(x_diff*x_diff + y_diff*y_diff);
-    }
-
-    private HashMap<Integer, Point> deepCopy(HashMap<Integer, Point> map) {
-        HashMap<Integer, Point> copy = new HashMap<>();
-        for (Map.Entry<Integer, Point> entry: map.entrySet()) {
-            copy.put(new Integer(entry.getKey()), new Point(entry.getValue()));
-        }
-        return copy;
     }
 
     // Utility Methods
@@ -983,6 +1106,76 @@ public class Player implements flip.sim.Player
         return move_null;
     }
 
+    private boolean isBlockAlmostComplete(Integer block_id, Point block_point, Integer piece_id, Point piece_point) {
+        return getDistance(block_point, piece_point) < EPSILON || Math.abs(getDistance(block_point, piece_point) - diameter_piece) < EPSILON;
+    }
+
+    private boolean isBlockadeAlmostComplete(HashMap<Integer, Point> player_pieces) {
+        for (Pair<Integer, Point> block : this.blockadeList) {
+            Integer block_id = block.getKey();
+            Point block_point = block.getValue();
+            Integer piece_id = this.blockadeMap.get(block_id);
+            Point piece_point = player_pieces.get(piece_id);
+            if (!isBlockAlmostComplete(block_id, block_point, piece_id, piece_point)) return false;
+        }
+        System.out.println("Blockade Complete in moves: " + this.turn_counter);
+        return true;
+    }
+
+
+    public List<Pair<Integer, Point>> getReleaseRunnerMoves(Integer runner_id, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces) {
+        double shortest_distance = -1;
+        Point closest_block_point = null;
+        Pair<Integer, Point> nearby_block = null;
+        for (Pair<Integer, Point> block : this.blockadeList) {
+            for (Map.Entry<Integer, Point> piece : player_pieces.entrySet()) {
+                if (Math.abs(piece.getValue().x) < BLOCKADE_LINE - EPSILON) {
+                    double distance = getDistance(block.getValue(), piece.getValue());
+                    if (distance < shortest_distance) {
+                        shortest_distance = distance;
+                        closest_block_point = block.getValue();
+                    }
+                    if (getDistance(block.getValue(), piece.getValue()) < diameter_piece + EPSILON) {
+                        nearby_block = block;
+                    }
+                }
+            }
+        }
+        if (nearby_block != null) {
+            // we found a block piece that the runner can replace
+            return flipOverBlockade(runner_id, nearby_block, player_pieces, opponent_pieces);
+        }
+
+        System.out.print("HERE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+        Point runner_point = player_pieces.get(runner_id);
+        Point behind_block_point = this.isplayer1 ? new Point(closest_block_point.x+2, closest_block_point.y) : new Point(closest_block_point.x-2, closest_block_point.y);
+        List<Pair<Integer, Point>> list = moveCurrentToTarget(runner_id, runner_point, behind_block_point, player_pieces, opponent_pieces);
+        System.out.print(list.size());
+        return list;
+    }
+
+    // Should only be called if you have 2 moves to make. Do not want to leave blockade broken.
+    public List<Pair<Integer, Point>> flipOverBlockade(Integer runner_id, Pair<Integer, Point> block, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces) {
+        List<Pair<Integer, Point>> moves = new ArrayList<>();
+        Point runner_point = player_pieces.get(runner_id);
+        Integer block_id = block.getKey();
+        Point block_point = block.getValue();
+        if (!isInFrontOf(runner_point, block_point) && getDistance(runner_point, block_point) < diameter_piece+EPSILON) {
+            Pair<Integer, Point> m1 = findAnyForwardMove(block_id, player_pieces, opponent_pieces, this.isplayer1);
+            if(m1 != null) {
+                moves.add(m1);
+                Pair<Integer, Point> m2 = new Pair<>(runner_id, block_point);
+                moves.add(m2);
+                this.blockadeList.remove(block);
+                this.blockadeList.add(m2);
+                // keep track of your runner - it's now a different piece.
+                this.blockadeMap.put(block.getKey(), runner_id);
+                this.GAMESTATE = STATES.OFFENSE;
+            }
+        }
+        return moves;
+    }
+
     // PROGRAMED BY TA
     public boolean check_validity(Pair<Integer, Point> move, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces)
     {
@@ -993,6 +1186,8 @@ public class Player implements flip.sim.Player
         {
             return false;
         }
+        player_pieces = new HashMap<>(player_pieces);
+        opponent_pieces = new HashMap<>(opponent_pieces);
         // check for collisions
         valid = valid && !Board.check_collision(player_pieces, move);
         valid = valid && !Board.check_collision(opponent_pieces, move);
@@ -1002,3 +1197,5 @@ public class Player implements flip.sim.Player
         return valid;
     }
 }
+
+////
