@@ -36,11 +36,6 @@ public class Aggressive extends Move {
 	}
 
 	@Override
-	public boolean isPossible() {
-		return false; // TODO: Change this implementation
-	}
-
-	@Override
 	public Pair<Integer, Point> getMove() {
 
 		Pair<Integer, Point> move = null;
@@ -300,11 +295,5 @@ public class Aggressive extends Move {
 
 	public void setOpponentPieces(HashMap<Integer, Point> opponent_pieces) {
 		this.opponent_pieces = opponent_pieces;
-	}
-	
-	@Override
-	public Pair<Integer, Point> getHybridMove() {
-		Pair<Integer, Point> move = null; // TODO: Change this implementation
-		return move;
-	}
+	}	
 }

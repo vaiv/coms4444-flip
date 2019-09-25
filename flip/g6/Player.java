@@ -99,7 +99,6 @@ public class Player implements flip.sim.Player
 				obstacleCreation.setPlayerPieces(obstacleCreationPlayerPieces);
 				if(i == 0) {
 					List<Pair<Integer, Point>> possMoves = obstacleCreation.doubleWallSwap();
-					System.out.println(possMoves);
 					if(possMoves != null) {
 						moves.addAll(possMoves);
 						return moves;
