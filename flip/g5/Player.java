@@ -1,4 +1,4 @@
-package flip.group5;
+package flip.g5;
 import java.util.*;
 import java.util.List;
 
