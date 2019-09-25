@@ -14,109 +14,101 @@ import javafx.util.Pair;
 
 public class ObstacleCreation extends Move {
 
-	private HashMap<Integer, Point> player_pieces;
-	private HashMap<Integer, Point> opponent_pieces;
-	private boolean isplayer1;
-	private Integer n;
-	private Double diameter_piece;
+	private HashMap<Integer, Point> playerPieces;
+	private HashMap<Integer, Point> opponentPieces;
+	private boolean isPlayer1;
+	private Double diameterPiece;
 
 	// Wall point positions
 	private static final double EPSILON = 0.001;
-//	private static final List<Double> WALL_POSITION_Y = new ArrayList<>(Arrays.asList(-17.30, -13.84, -10.38, -6.92, -3.46, 0.00, 3.46, 6.92, 10.38, 13.84, 17.30));
 	private static final List<Double> WALL1_POSITION_Y = new ArrayList<>(Arrays.asList(0.00, 3.46, -3.46, 6.92, -6.92, 10.38, -10.38, 13.84, -13.84, 17.30, -17.30));
 	private static final List<Double> WALL2_POSITION_Y = new ArrayList<>(Arrays.asList(0.00, 3.46, -3.46, 6.92, -6.92, 10.38, -10.38, 13.84, -13.84, 17.30, -17.30));
-	private ArrayList<Point> wall_pos_list = new ArrayList<Point>();
-	private ArrayList<Point> wall_pos_list_second = new ArrayList<Point>();
-	private HashMap<Integer, Point> wall_pieces = new HashMap<Integer, Point>();
-	private HashMap<Integer, Point> wall_pieces_second = new HashMap<Integer, Point>();
-	private Integer designated_wall_piece_id = -1;
-	private Integer designated_wall2_piece_id = -1;
-	private HashMap<Integer, Point> wall_points_done = new HashMap<>();
-	private HashMap<Integer, Point> wall_points_on_deck = new HashMap<>();
-	private HashMap<Integer, Point> wall2_points_done = new HashMap<>();
-	private HashMap<Integer, Point> wall2_points_on_deck = new HashMap<>();
-	private List<Integer> waiting_wall_pieces = new ArrayList<Integer>();
+	private ArrayList<Point> wall1PosList = new ArrayList<Point>();
+	private ArrayList<Point> wall2PosList = new ArrayList<Point>();
+	private HashMap<Integer, Point> wall1PiecesLeft = new HashMap<Integer, Point>();
+	private HashMap<Integer, Point> wall2PiecesLeft = new HashMap<Integer, Point>();
+	private Integer designatedWall1PieceID = -1;
+	private Integer designatedWall2PieceID = -1;
+	private HashMap<Integer, Point> wall1PointsDone = new HashMap<>();
+	private HashMap<Integer, Point> wall1PointsOnDeck = new HashMap<>();
+	private HashMap<Integer, Point> wall2PointsDone = new HashMap<>();
+	private HashMap<Integer, Point> wall2PointsOnDeck = new HashMap<>();
 
 	public ObstacleCreation(HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, boolean isplayer1, Integer n, Double diameter_piece) {
-		this.player_pieces = player_pieces;
-		this.opponent_pieces = opponent_pieces;
-		this.isplayer1 = isplayer1;
-		this.n = n;
-		this.diameter_piece = diameter_piece;
+		this.playerPieces = player_pieces;
+		this.opponentPieces = opponent_pieces;
+		this.isPlayer1 = isplayer1;
+		this.diameterPiece = diameter_piece;
 	}
-	
+
 	@Override
 	public void updatePieceInfo(HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces) {
-		this.player_pieces = player_pieces;
-		this.opponent_pieces = opponent_pieces;
+		this.playerPieces = player_pieces;
+		this.opponentPieces = opponent_pieces;
 	}
-	
+
 	@Override
 	public boolean isPossible() {
-		return true; // TODO: Change this implementation
+		return true;
 	}
 
 	@Override
 	public Pair<Integer, Point> getMove() {
-		System.out.println("Wall pieces on deck: " + wall_points_on_deck);
-		System.out.println("Wall pieces done: " + wall_points_done);		
-		System.out.println("Wall 2 pieces on deck: " + wall2_points_on_deck);
-		System.out.println("Wall 2 pieces done: " + wall2_points_done);		
-//		if(wall_pieces.size() != WALL_POSITION_Y.size() && wall_pieces_second.size() != WALL_POSITION_Y.size())
-			calculateWallPositionsMap(player_pieces);
-		List<Pair<Integer, Point>> possMoves = buildWall(player_pieces, opponent_pieces, wall_pieces);
-//		System.out.println("Number of possible moves: " + possMoves.size());
-		HashMap<Integer, Point> unfinished_opponent_pieces = getUnfinishedPlayerPieces(opponent_pieces, !isplayer1, Approach.AGGRESSIVE);
-//		if(possMoves.size() == 0) {
-//			calculateWallPositionsMap(player_pieces);
-//			possMoves = buildWall(player_pieces, opponent_pieces, wall_pieces);
-//		}
-		
-		if(possMoves.size() != 0 && unfinished_opponent_pieces.size() > 0 && wall_points_done.size() != WALL1_POSITION_Y.size()) {
+		System.out.println("Size of player pieces: " + playerPieces.size());
+		System.out.println("Wall 1 pieces on deck: " + wall1PointsOnDeck);
+		System.out.println("Wall 1 pieces done: " + wall1PointsDone);		
+		System.out.println("Wall 2 pieces on deck: " + wall2PointsOnDeck);
+		System.out.println("Wall 2 pieces done: " + wall2PointsDone);
+		calculateWallPositionsMap(playerPieces);
+		List<Pair<Integer, Point>> possMoves = buildWall(playerPieces, opponentPieces, wall1PiecesLeft);
+		//		System.out.println("Number of possible moves: " + possMoves.size());
+		HashMap<Integer, Point> unfinished_opponent_pieces = getUnfinishedPlayerPieces(opponentPieces, !isPlayer1, Approach.AGGRESSIVE);
+
+		if(possMoves.size() != 0 && unfinished_opponent_pieces.size() > 0 && wall1PointsDone.size() != WALL1_POSITION_Y.size()) {
 			for(int i = 0; i < possMoves.size(); i++) {
-				for(Integer wall_on_deck_id : wall_points_on_deck.keySet()) {
-					if(wall_points_on_deck.size() > 0 && possMoves.get(i).getValue().equals(wall_points_on_deck.get(wall_on_deck_id))) {
-						if(checkValidity(possMoves.get(i), player_pieces, opponent_pieces, diameter_piece)) {
-							wall_points_done.put(wall_on_deck_id, wall_points_on_deck.get(wall_on_deck_id));
-							wall_points_on_deck.remove(wall_on_deck_id);
-							player_pieces.put(possMoves.get(i).getKey(), possMoves.get(i).getValue());						
+				for(Integer wall_on_deck_id : wall1PointsOnDeck.keySet()) {
+					if(wall1PointsOnDeck.size() > 0 && possMoves.get(i).getValue().equals(wall1PointsOnDeck.get(wall_on_deck_id))) {
+						if(checkValidity(possMoves.get(i), playerPieces, opponentPieces, diameterPiece)) {
+							wall1PointsDone.put(wall_on_deck_id, wall1PointsOnDeck.get(wall_on_deck_id));
+							wall1PointsOnDeck.remove(wall_on_deck_id);
+							playerPieces.put(possMoves.get(i).getKey(), possMoves.get(i).getValue());						
 							return possMoves.get(i);
 						}
-					}					
+					}
 				}
 			}
-			HashMap<Integer, Point> closest_unfinished_opponent_pieces = getClosestPointsToOpponentBoundary(1, unfinished_opponent_pieces, !isplayer1);
+			HashMap<Integer, Point> closest_unfinished_opponent_pieces = getClosestPointsToOpponentBoundary(1, unfinished_opponent_pieces, !isPlayer1);
 			for(int i = 0; i < possMoves.size(); i++) {
 				Pair<Integer, Point> move = possMoves.get(i);
-				if(move.getKey().equals(designated_wall_piece_id)) {
-					if(checkValidity(move, player_pieces, opponent_pieces, diameter_piece)) {
-						player_pieces.put(designated_wall_piece_id, move.getValue());
+				if(move.getKey().equals(designatedWall1PieceID)) {
+					if(checkValidity(move, playerPieces, opponentPieces, diameterPiece)) {
+						playerPieces.put(designatedWall1PieceID, move.getValue());
 						return move;
 					}
-					else {
-						Integer collisionID = getWallCollisionSource(player_pieces, move);			
-						for(int j = 0; j < possMoves.size(); j++) {
-							Pair<Integer, Point> collisionMove = possMoves.get(j);
-							if(collisionMove.getKey().equals(collisionID) && checkValidity(collisionMove, player_pieces, opponent_pieces, diameter_piece)) {
-								designated_wall_piece_id = collisionID;
-								player_pieces.put(collisionID, collisionMove.getValue());
-								return collisionMove;
-							}
-						}
-					}
-					break;
+//					else {
+//						Integer collisionID = getWallCollisionSource(playerPieces, move);			
+//						for(int j = 0; j < possMoves.size(); j++) {
+//							Pair<Integer, Point> collisionMove = possMoves.get(j);
+//							if(collisionMove.getKey().equals(collisionID) && checkValidity(collisionMove, playerPieces, opponentPieces, diameterPiece)) {
+//								designatedWall1PieceID = collisionID;
+//								playerPieces.put(collisionID, collisionMove.getValue());
+//								return collisionMove;
+//							}
+//						}
+//					}
+//					break;
 				}
 			}
-			
+
 			List<Pair<Integer, Point>> clonedPossMoves = new ArrayList<>();
 			clonedPossMoves.addAll(possMoves);
 			for(int i = 0; i < possMoves.size(); i++) {
 				Pair<Integer, Point> move = possMoves.get(i);
-				if(!checkValidity(move, player_pieces, opponent_pieces, diameter_piece))
+				if(!checkValidity(move, playerPieces, opponentPieces, diameterPiece))
 					clonedPossMoves.remove(move);
 			}
 			possMoves = clonedPossMoves;			
-			
+
 			if(closest_unfinished_opponent_pieces.size() != 0) {
 				for(Integer id : closest_unfinished_opponent_pieces.keySet()) {
 					int possMoveID = -1;
@@ -131,158 +123,90 @@ public class ObstacleCreation extends Move {
 							index = i;
 						}
 					}
-//					if((isplayer1 && closest_unfinished_opponent_pieces.get(id).x > -20) || (!isplayer1 && closest_unfinished_opponent_pieces.get(id).x < 20))
-//						return possMoves.get(index);
 					if(index != -1) {
-						designated_wall_piece_id = possMoves.get(index).getKey();
-						player_pieces.put(possMoves.get(index).getKey(), possMoves.get(index).getValue());
+						designatedWall1PieceID = possMoves.get(index).getKey();
+						playerPieces.put(possMoves.get(index).getKey(), possMoves.get(index).getValue());
 						return possMoves.get(index);
 					}
 				}
 			}
-			designated_wall_piece_id = possMoves.get(0).getKey();
-			player_pieces.put(possMoves.get(0).getKey(), possMoves.get(0).getValue());
+			designatedWall1PieceID = possMoves.get(0).getKey();
+			playerPieces.put(possMoves.get(0).getKey(), possMoves.get(0).getValue());
 			return possMoves.get(0);
 		}
-		else {
-			List<Pair<Integer, Point>> possMoves2 = buildWall(player_pieces, opponent_pieces, wall_pieces_second);
-			if(possMoves2.size() != 0 && unfinished_opponent_pieces.size() > 0 && wall2_points_done.size() != WALL2_POSITION_Y.size()){
-				for(int i = 0; i < possMoves2.size(); i++) {
-					for(Integer wall_on_deck_id : wall2_points_on_deck.keySet()) {
-						if(wall2_points_on_deck.size() > 0 && possMoves2.get(i).getValue().equals(wall2_points_on_deck.get(wall_on_deck_id))) {
-							if(checkValidity(possMoves2.get(i), player_pieces, opponent_pieces, diameter_piece)) {
-								wall2_points_done.put(wall_on_deck_id, wall2_points_on_deck.get(wall_on_deck_id));
-								wall2_points_on_deck.remove(wall_on_deck_id);
-								player_pieces.put(possMoves2.get(i).getKey(), possMoves2.get(i).getValue());						
-								return possMoves2.get(i);
-							}
-						}					
-					}
-				}
-				HashMap<Integer, Point> closest_unfinished_opponent_pieces = getClosestPointsToOpponentBoundary(1, unfinished_opponent_pieces, !isplayer1);
-				for(int i = 0; i < possMoves2.size(); i++) {
-					Pair<Integer, Point> move = possMoves2.get(i);
-					if(move.getKey().equals(designated_wall2_piece_id)) {
-						if(checkValidity(move, player_pieces, opponent_pieces, diameter_piece)) {
-							player_pieces.put(designated_wall2_piece_id, move.getValue());
-							return move;
+		List<Pair<Integer, Point>> possMoves2 = buildWall(playerPieces, opponentPieces, wall2PiecesLeft);
+		if(possMoves2.size() != 0 && unfinished_opponent_pieces.size() > 0 && wall2PointsDone.size() != WALL1_POSITION_Y.size()) {
+			for(int i = 0; i < possMoves2.size(); i++) {
+				for(Integer wall_on_deck_id : wall2PointsOnDeck.keySet()) {
+					if(wall2PointsOnDeck.size() > 0 && possMoves2.get(i).getValue().equals(wall2PointsOnDeck.get(wall_on_deck_id))) {
+						if(checkValidity(possMoves2.get(i), playerPieces, opponentPieces, diameterPiece)) {
+							wall2PointsDone.put(wall_on_deck_id, wall2PointsOnDeck.get(wall_on_deck_id));
+							wall2PointsOnDeck.remove(wall_on_deck_id);
+							playerPieces.put(possMoves2.get(i).getKey(), possMoves2.get(i).getValue());						
+							return possMoves2.get(i);
 						}
-						else {
-							Integer collisionID = getWallCollisionSource(player_pieces, move);			
-							for(int j = 0; j < possMoves2.size(); j++) {
-								Pair<Integer, Point> collisionMove = possMoves2.get(j);
-								if(collisionMove.getKey().equals(collisionID) && checkValidity(collisionMove, player_pieces, opponent_pieces, diameter_piece)) {
-									designated_wall2_piece_id = collisionID;
-									player_pieces.put(collisionID, collisionMove.getValue());
-									return collisionMove;
-								}
-							}
-						}
-						break;
-					}
+					}					
 				}
-				
-				List<Pair<Integer, Point>> clonedpossMoves2 = new ArrayList<>();
-				clonedpossMoves2.addAll(possMoves2);
-				for(int i = 0; i < possMoves2.size(); i++) {
-					Pair<Integer, Point> move = possMoves2.get(i);
-					if(!checkValidity(move, player_pieces, opponent_pieces, diameter_piece))
-						clonedpossMoves2.remove(move);
-				}
-				possMoves2 = clonedpossMoves2;			
-				
-				if(closest_unfinished_opponent_pieces.size() != 0) {
-					for(Integer id : closest_unfinished_opponent_pieces.keySet()) {
-						int possMoveID = -1;
-						double distanceY = Double.MAX_VALUE;
-						int index = -1;
-						for(int i = 0; i < possMoves2.size(); i++) {
-							Pair<Integer, Point> possMove = possMoves2.get(i);
-							double newDistanceY = Math.abs(possMove.getValue().y - closest_unfinished_opponent_pieces.get(id).y);
-							if(newDistanceY < distanceY) {
-								possMoveID = possMove.getKey();
-								distanceY = newDistanceY;
-								index = i;
-							}
-						}
-//						if((isplayer1 && closest_unfinished_opponent_pieces.get(id).x > -20) || (!isplayer1 && closest_unfinished_opponent_pieces.get(id).x < 20))
-//							return possMoves2.get(index);
-						if(index != -1) {
-							designated_wall2_piece_id = possMoves2.get(index).getKey();
-							player_pieces.put(possMoves2.get(index).getKey(), possMoves2.get(index).getValue());
-							return possMoves2.get(index);
-						}
-					}
-				}
-				designated_wall2_piece_id = possMoves2.get(0).getKey();
-				player_pieces.put(possMoves2.get(0).getKey(), possMoves2.get(0).getValue());
-				return possMoves2.get(0);
 			}
+			HashMap<Integer, Point> closest_unfinished_opponent_pieces = getClosestPointsToOpponentBoundary(1, unfinished_opponent_pieces, !isPlayer1);
+			for(int i = 0; i < possMoves2.size(); i++) {
+				Pair<Integer, Point> move = possMoves2.get(i);
+				if(move.getKey().equals(designatedWall2PieceID)) {
+					if(checkValidity(move, playerPieces, opponentPieces, diameterPiece)) {
+						playerPieces.put(designatedWall2PieceID, move.getValue());
+						return move;
+					}
+					else {
+						Integer collisionID = getWallCollisionSource(playerPieces, move);			
+						for(int j = 0; j < possMoves2.size(); j++) {
+							Pair<Integer, Point> collisionMove = possMoves2.get(j);
+							if(collisionMove.getKey().equals(collisionID) && checkValidity(collisionMove, playerPieces, opponentPieces, diameterPiece)) {
+								designatedWall2PieceID = collisionID;
+								playerPieces.put(collisionID, collisionMove.getValue());
+								return collisionMove;
+							}
+						}
+					}
+					break;
+				}
+			}
+
+			List<Pair<Integer, Point>> clonedPossMoves2 = new ArrayList<>();
+			clonedPossMoves2.addAll(possMoves2);
+			for(int i = 0; i < possMoves2.size(); i++) {
+				Pair<Integer, Point> move = possMoves2.get(i);
+				if(!checkValidity(move, playerPieces, opponentPieces, diameterPiece))
+					clonedPossMoves2.remove(move);
+			}
+			possMoves2 = clonedPossMoves2;			
+
+			if(closest_unfinished_opponent_pieces.size() != 0) {
+				for(Integer id : closest_unfinished_opponent_pieces.keySet()) {
+					int possMoveID = -1;
+					double distanceY = Double.MAX_VALUE;
+					int index = -1;
+					for(int i = 0; i < possMoves2.size(); i++) {
+						Pair<Integer, Point> possMove = possMoves2.get(i);
+						double newDistanceY = Math.abs(possMove.getValue().y - closest_unfinished_opponent_pieces.get(id).y);
+						if(newDistanceY < distanceY) {
+							possMoveID = possMove.getKey();
+							distanceY = newDistanceY;
+							index = i;
+						}
+					}
+					if(index != -1) {
+						designatedWall2PieceID = possMoves2.get(index).getKey();
+						playerPieces.put(possMoves2.get(index).getKey(), possMoves2.get(index).getValue());
+						return possMoves2.get(index);
+					}
+				}
+			}
+			designatedWall2PieceID = possMoves2.get(0).getKey();
+			playerPieces.put(possMoves2.get(0).getKey(), possMoves2.get(0).getValue());
+			return possMoves2.get(0);
 		}
 
 		return null;
-
-		//		Pair<Integer, Point> move = null; // TODO: Change this implementation
-		//
-		//		HashMap<Integer, Point> unfinished_pieces = getUnfinishedPlayerPieces(player_pieces, isplayer1, Approach.CREATION);
-		//		HashMap<Integer, Point> closest_pieces = getClosestPointsToOpponentBoundary(n / 2, player_pieces, isplayer1);
-		//		HashMap<Integer, Point> relevant_pieces = (HashMap<Integer, Point>) player_pieces.clone();
-		//		HashMap<Integer, Point> relevant_unfinished_pieces = new HashMap<>();		
-		//		
-		//		for(Integer id : closest_pieces.keySet()) {
-		//			relevant_pieces.remove(id);
-		//		}
-		//		
-		//		for(Integer id : relevant_pieces.keySet())
-		//			if(unfinished_pieces.containsKey(id) && relevant_pieces.containsKey(id))
-		//				relevant_unfinished_pieces.put(id, relevant_pieces.get(id));		
-		//		
-		//		//System.out.println("Number of OC unfinished pieces: " + unfinished_pieces.size());
-		//
-		//		Random random = new Random();
-		//		Integer piece_id = random.nextInt(n);
-		//		while(!relevant_unfinished_pieces.containsKey(piece_id))
-		//			piece_id = random.nextInt(n);
-		//		Point curr_position = player_pieces.get(piece_id);
-		//		Point new_position = new Point(curr_position);
-		//
-		////		double maxInteriorDistance = 0;
-		////		if(isplayer1) {
-		////			maxInteriorDistance = 20;
-		////		}else {
-		////			maxInteriorDistance = -20;
-		////		}
-		//
-		////		if((isplayer1 && curr_position.x < maxInteriorDistance) || (!isplayer1 && curr_position.x > maxInteriorDistance)) {
-		//			// Player 1
-		////			try {
-		////				return getMove();
-		////				return null;
-		////			} catch (Exception e) {
-		//				// TODO Auto-generated catch block
-		////				return null;
-		////			}
-		////		}
-		//
-		//		double theta = -Math.PI/2 + Math.PI * random.nextDouble();
-		//		double delta_x = 0;
-		//		double delta_y = 0;
-		//		delta_x = diameter_piece * Math.cos(theta);
-		//		delta_y = diameter_piece * Math.sin(theta);
-		//
-		//		Double val = (Math.pow(delta_x,2) + Math.pow(delta_y, 2));
-		//		// System.out.println("delta_x^2 + delta_y^2 = " + val.toString() + " theta values are " + Math.cos(theta) + " " + Math.sin(theta) + " diameter is " + diameter_piece);
-		//		// Log.record("delta_x^2 + delta_y^2 = " + val.toString() + " theta values are " + Math.cos(theta) + " " + Math.sin(theta) + " diameter is " + diameter_piece);
-		//
-		//		new_position.x = isplayer1 ? new_position.x - delta_x : new_position.x + delta_x;
-		//		new_position.y += delta_y;
-		//		move = new Pair<Integer, Point>(piece_id, new_position);
-		//
-		//		Double dist = Board.getdist(player_pieces.get(move.getKey()), move.getValue());
-		//		// System.out.println("distance from previous position is " + dist.toString());
-		//		// Log.record("distance from previous position is " + dist.toString());
-		//		
-		//		return move;
 	}
 
 	@Override
@@ -293,52 +217,63 @@ public class ObstacleCreation extends Move {
 
 	public void calculateWallPositionsMap(HashMap<Integer, Point> player_pieces) {
 
-		double x1 = this.isplayer1 ? 19.99 : -19.99;
-		double x2 = this.isplayer1 ? 22.01 : -22.01;
-		
-		wall_pieces = new HashMap<>();
-		wall_pieces_second = new HashMap<>();
+		double x1 = this.isPlayer1 ? 19.99 : -19.99;
+		double x2 = this.isPlayer1 ? 22.01 : -22.01;
 
-		wall_pos_list = new ArrayList<Point>();
-		wall_pos_list_second = new ArrayList<Point>();  
-		
+		wall1PiecesLeft = new HashMap<>();
+		wall2PiecesLeft = new HashMap<>();
+
+		wall1PosList = new ArrayList<Point>();
+		wall2PosList = new ArrayList<Point>();  
+
 		for(int i = 0; i < WALL1_POSITION_Y.size(); i++) {
 			boolean wall_position_done = false;
-			for(Integer j : wall_points_done.keySet()) {
-				if(WALL1_POSITION_Y.get(i).equals(wall_points_done.get(j).y)) {
+			for(Integer j : wall1PointsDone.keySet()) {
+				if(WALL1_POSITION_Y.get(i).equals(wall1PointsDone.get(j).y)) {
 					wall_position_done = true;
 					break;
 				}
 			}
 			if(wall_position_done)
 				continue;
-			wall_pos_list.add(new Point(x1, WALL1_POSITION_Y.get(i)));
+						x1 += isPlayer1 ? 0.22 : -0.22;
+			wall1PosList.add(new Point(x1, WALL1_POSITION_Y.get(i)));
 		}
-		
-		System.out.println("Remaining wall positions: " + wall_pos_list);
+
+		System.out.println("Remaining wall 1 positions: " + wall1PosList);
 
 		for(int i = 0; i < WALL2_POSITION_Y.size(); i++){
 			boolean wall2_position_done = false;
-			for(Integer j : wall2_points_done.keySet()) {
-				if(WALL2_POSITION_Y.get(i).equals(wall2_points_done.get(j).y)) {
+			for(Integer j : wall2PointsDone.keySet()) {
+				if(WALL2_POSITION_Y.get(i).equals(wall2PointsDone.get(j).y)) {
 					wall2_position_done = true;
 					break;
 				}
 			}
 			if(wall2_position_done)
 				continue;
-			wall_pos_list_second.add(new Point(x2, WALL2_POSITION_Y.get(i)));
+						x2 += isPlayer1 ? 0.22 : -0.22;
+			wall2PosList.add(new Point(x2, WALL2_POSITION_Y.get(i)));
 		}
-				
-		for(Point p : wall_pos_list) {
+
+		System.out.println("Remaining wall 2 positions: " + wall2PosList);
+
+		for(Point p : wall1PosList) {
 			Integer id = nearestPoint(p, player_pieces);
-			wall_pieces.put(id, p);
+			if(id != -1)
+				wall1PiecesLeft.put(id, p);
 		}
-		
-		for(Point p : wall_pos_list_second) {
+
+		System.out.println("Wall 1 pieces: " + wall1PiecesLeft);
+		System.out.println("Wall 2 pieces just before populating: " + wall2PiecesLeft);
+
+		for(Point p : wall2PosList) {
 			Integer id = nearestPoint(p, player_pieces);
-			wall_pieces_second.put(id, p);
+			if(id != -1)
+				wall2PiecesLeft.put(id, p);
 		}
+
+		System.out.println("Wall 2 pieces: " + wall2PiecesLeft);
 	}
 
 	public List<Pair<Integer, Point>> buildWall(HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, HashMap<Integer, Point> wall) {
@@ -352,10 +287,10 @@ public class ObstacleCreation extends Move {
 			destination = entry.getValue();
 
 			List<Point> points = moveCurrentToTarget(id, player_pieces.get(id), destination, player_pieces, opponent_pieces);
-		
+
 			for (Point point : points) {
 				move = new Pair(id, point);
-//				if (checkValidity(move, player_pieces, opponent_pieces, diameter_piece))
+				//				if (checkValidity(move, player_pieces, opponent_pieces, diameter_piece))
 				moves.add(move);
 			}
 		}
@@ -371,26 +306,29 @@ public class ObstacleCreation extends Move {
 		if (d < EPSILON) {
 			return moves; // do nothing
 		}
-		if (d >= diameter_piece - EPSILON && d < diameter_piece + EPSILON) {
-			wall_points_on_deck.put(id, target);
+		if (d >= diameterPiece - EPSILON && d < diameterPiece + EPSILON) {
+			if(wall1PiecesLeft.containsKey(id))
+				wall1PointsOnDeck.put(id, target);
+			else if(wall2PiecesLeft.containsKey(id))
+				wall2PointsOnDeck.put(id, target);
 			moves.add(target);
-		} else if (d > EPSILON && d <= 2*diameter_piece) {
+		} else if (d > EPSILON && d <= 2*diameterPiece) {
 			moves.addAll(moveCurrentToTargetClose(new Pair<Integer, Point>(id, current), target, player_pieces, opponent_pieces));
 			if (moves.isEmpty()) {
 				Point behind_current = new Point(current.x, current.y);
-				behind_current.x += isplayer1 ? diameter_piece : -diameter_piece;
+				behind_current.x += isPlayer1 ? diameterPiece : -diameterPiece;
 				moves.add(behind_current);
 			}
-		} else if (d > 2*diameter_piece && d <= 3*diameter_piece) {
+		} else if (d > 2*diameterPiece && d <= 3*diameterPiece) {
 			Point new_position = getNewPointFromOldPointAndAngle(current, theta);
 			moves.add(new_position);
 			moves.addAll(moveCurrentToTargetClose(new Pair<Integer, Point>(id, new_position), target, player_pieces, opponent_pieces));
 			if (moves.size() == 1) {
 				Point behind_current = new Point(current.x, current.y);
-				behind_current.x += isplayer1 ? diameter_piece : -diameter_piece;
+				behind_current.x += isPlayer1 ? diameterPiece : -diameterPiece;
 				moves.add(behind_current);
 			}
-		} else if (d > 3*diameter_piece) {
+		} else if (d > 3*diameterPiece) {
 			Point m1 = getNewPointFromOldPointAndAngle(current, theta);
 			moves.add(m1);
 			Point m2 = getNewPointFromOldPointAndAngle(m1, theta);
@@ -418,34 +356,34 @@ public class ObstacleCreation extends Move {
 		// if that still doesn't work, move to the point directly behind the current spot
 		Point m1 = getNewPointFromOldPointAndAngle(current_point, theta);
 		Pair<Integer, Point> next = new Pair(current_id, m1);
-		if (checkValidity(next, player_pieces, opponent_pieces, diameter_piece)) {
+		if (checkValidity(next, player_pieces, opponent_pieces, diameterPiece)) {
 			moves.add(m1);
 			Point m2 = getNewPointFromOldPointAndAngle(m1, phi);
 			moves.add(m2);
 		} else {
 			m1 = getNewPointFromOldPointAndAngle(current_point, phi);
-			next = new Pair(current_id, m1);
-			if (checkValidity(next, player_pieces, opponent_pieces, diameter_piece)) {
+			next = new Pair<Integer, Point>(current_id, m1);
+			if (checkValidity(next, player_pieces, opponent_pieces, diameterPiece)) {
 				moves.add(m1);
 				Point m2 = getNewPointFromOldPointAndAngle(m1, theta);
 				moves.add(m2);
 			} else {
 				theta = 0;
-				double numAngles = 270;
+				double numAngles = 180;
 				for(int i = 0; i <= numAngles; i++) {
 					if(i % 2 == 0)
-						theta -= i * 3 * Math.PI / (2 * numAngles);
+						theta -= i * Math.PI / numAngles;
 					else
-						theta += i * 3 * Math.PI / (2 * numAngles);
-					double delta_x = diameter_piece * Math.cos(theta);
-					double delta_y = diameter_piece * Math.sin(theta);
+						theta += i * Math.PI / numAngles;
+					double delta_x = diameterPiece * Math.cos(theta);
+					double delta_y = diameterPiece * Math.sin(theta);
 
-					m1 = isplayer1 ? new Point(current_point.x - delta_x, current_point.y + delta_y) : new Point(current_point.x + delta_x, current_point.y + delta_y);
-					next = new Pair(current_id, m1);
-					if(checkValidity(next, player_pieces, opponent_pieces, diameter_piece)) {
+					m1 = isPlayer1 ? new Point(current_point.x - delta_x, current_point.y + delta_y) : new Point(current_point.x + delta_x, current_point.y + delta_y);
+					next = new Pair<Integer, Point>(current_id, m1);
+					if(checkValidity(next, player_pieces, opponent_pieces, diameterPiece)) {
 						//System.out.println("THETA USED...Aggressive, theta: " + theta);
 						System.out.println("Making any possible move at this point...");
-//						System.out.println("FAILED TO MOVE TO BLOCKADE POINT");
+						//						System.out.println("FAILED TO MOVE TO BLOCKADE POINT");
 						moves.add(m1);
 						break;
 					}
@@ -457,56 +395,120 @@ public class ObstacleCreation extends Move {
 
 	public Point getNewPointFromOldPointAndAngle(Point current, double theta) {
 		Point new_position;
-		double delta_x = diameter_piece * Math.cos(theta);
-		double delta_y = diameter_piece * Math.sin(theta);
-		double x = current.x + (this.isplayer1 ? -delta_x : delta_x);
-		double y = current.y + (this.isplayer1 ? -delta_y : delta_y);
+		double delta_x = diameterPiece * Math.cos(theta);
+		double delta_y = diameterPiece * Math.sin(theta);
+		double x = current.x + (this.isPlayer1 ? -delta_x : delta_x);
+		double y = current.y + (this.isPlayer1 ? -delta_y : delta_y);
 		new_position = new Point(x, y);
 		return new_position;
 	}
 
 	private Integer nearestPoint(Point point, HashMap<Integer, Point> player_pieces){
-		Integer id = 0;
+		Integer id = -1;
 		Point p;
 		double d;
 		double min_dist = Double.MAX_VALUE;
 		for(Integer i : player_pieces.keySet()) {
-			boolean player_piece_built_on_wall = false;
-			for(Integer j : wall_points_done.keySet()) {
-				if(i.equals(j)) {
-					player_piece_built_on_wall = true;
-					break;
-				}
-			}
-			if(player_piece_built_on_wall)
+			if(wall1PointsDone.containsKey(i) || wall2PointsDone.containsKey(i))
 				continue;
-			boolean player_piece_built_on_wall2 = false;
-			for(Integer j : wall2_points_done.keySet()) {
-				if(i.equals(j)) {
-					player_piece_built_on_wall2 = true;
-					break;
-				}
-			}
-			if(player_piece_built_on_wall2)
+			if(wall1PiecesLeft.containsKey(i) || wall2PiecesLeft.containsKey(i))
 				continue;
-			if(wall_pieces.containsKey(i) || wall_pieces_second.containsKey(i))
-				continue;
+
 			p = player_pieces.get(i);
 			d = Math.sqrt(Math.pow(point.x - p.x, 2) + Math.pow(point.y - p.y, 2));
 			if(d < min_dist){
 				min_dist = d;
 				id = i;
-			}
+			}				
 		}
 		return id;
 	}
-	
+
 	public Integer getWallCollisionSource(HashMap<Integer, Point> player_pieces, Pair<Integer, Point> piece) {
-        for(HashMap.Entry<Integer, Point> entry : player_pieces.entrySet()) {
-            if(Board.getdist(piece.getValue(), entry.getValue()) + 1E-7 < diameter_piece) {
-                return entry.getKey();
-            }
-        }
-        return -1;
-    }
+		for(HashMap.Entry<Integer, Point> entry : player_pieces.entrySet()) {
+			if(Board.getdist(piece.getValue(), entry.getValue()) + 1E-7 < diameterPiece) {
+				return entry.getKey();
+			}
+		}
+		return -1;
+	}
+
+	public List<Pair<Integer, Point>> doubleWallSwap(){
+
+		/* 1. Find two coins to swap
+            a. Two coins on the wall
+            b. whether two turns remain
+           2. Move the first out
+            a. check whether there is space to move
+           3. Move the second to the first position
+           4. Move extra coins to the second position
+		 */
+
+		List<Pair<Integer, Point>> moves = new ArrayList<>();
+
+		Point p1, p2;
+
+		for (Integer id1 : wall1PointsDone.keySet()) {
+			p1 = wall1PointsDone.get(id1); 
+
+			for (Integer id2 : wall2PointsDone.keySet()) {
+
+				p2 = wall2PointsDone.get(id2);
+
+				System.out.println("ID 1: " + id1 + ", ID 2: " + id2);
+
+				if(Math.abs(p1.y - p2.y) < 0.1) {
+					
+					System.out.println("Possible double swap detected");
+					
+					Point destination;
+					Pair<Integer, Point> move;
+
+					double numAngles = 180;
+					double theta = 0;
+					for(int i = 0; i <= numAngles; i++) {
+						if(i % 2 == 0)
+							theta -= i * Math.PI / numAngles;
+						else
+							theta += i * Math.PI / numAngles;
+						double delta_x = diameterPiece * Math.cos(theta);
+						double delta_y = diameterPiece * Math.sin(theta);
+
+						destination = new Point(p1.x + (isPlayer1 ? -delta_x : delta_x), p1.y + delta_y);
+						move = new Pair<Integer, Point>(id1, destination);
+						if (checkValidity(move, playerPieces, opponentPieces, diameterPiece)) {
+							// Point 1
+							
+							System.out.println("Double swap detected");
+							moves.add(move);
+							playerPieces.put(id1, destination);
+							// Point 2
+							move = new Pair<Integer, Point>(id2, new Point(p2.x + (isPlayer1 ? -diameterPiece : diameterPiece), p2.y));
+							moves.add(move);
+							playerPieces.put(id2, p1);
+
+							return moves;
+						}
+					}
+				}
+			}
+		}
+		return null;
+	}
+	
+	public HashMap<Integer, Point> getPlayerPieces() {
+		return playerPieces;
+	}
+
+	public void setPlayerPieces(HashMap<Integer, Point> playerPieces) {
+		this.playerPieces = playerPieces;
+	}
+
+	public HashMap<Integer, Point> getOpponentPieces() {
+		return opponentPieces;
+	}
+
+	public void setOpponentPieces(HashMap<Integer, Point> opponentPieces) {
+		this.opponentPieces = opponentPieces;
+	}
 }

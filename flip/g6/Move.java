@@ -77,7 +77,7 @@ public abstract class Move {
 		
 		switch(approach) {
 			case AGGRESSIVE: {
-				double maxInteriorDistance = player_pieces.size() / 10 + (player_pieces.size() <= 22 ? 2 : 3);
+				double maxInteriorDistance = player_pieces.size() / 10 + 1.5;
 				for(Integer i : player_pieces.keySet()) {			
 					Point curr_position = player_pieces.get(i);
 				 	if((isplayer1 && curr_position.x < -(20 + maxInteriorDistance)) || (!isplayer1 && curr_position.x > (20 + maxInteriorDistance)))
