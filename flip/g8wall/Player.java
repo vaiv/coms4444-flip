@@ -65,7 +65,7 @@ public class Player implements flip.sim.Player
 	{
 		List<Pair<Integer, Point>> moves = new ArrayList<Pair<Integer, Point>>();
 
-		int num_trials = 30;
+		int num_trials = 60;
 		int i = 0;
 
 		//if n < 30, use greedy
@@ -182,27 +182,19 @@ public class Player implements flip.sim.Player
 			// 	}
 			// }
 
+			// Adaptive wall building
+			Point enemy_runner_pos = opponent_pieces.get(find_runner(opponent_pieces, isplayer1));
+			piece_to_dest.sort(
+				(Pair<Integer, Point> p1, Pair<Integer, Point> p2) -> 
+				distance(enemy_runner_pos, p1.getValue()) > distance(enemy_runner_pos, p2.getValue()) ? 1 : -1
+			);
+
 			for (Pair<Integer, Point> pair : piece_to_dest) { // TODO: adaptive wall building
 				if (!wall_complete && ignored_piece.size() == wall_point.size()) {
 					wall_complete = true;
 					back_wall_point = new HashMap<Integer, Point>(wall_point);
 				}
 				if (wall_complete) break;
-
-				// adaptive wall building, priorize walls that blocks enemy runners
-				// Point enemy_runner_pos = opponent_pieces.get(find_runner(opponent_pieces, isplayer1));
-				// Integer adapive_wall = piece_to_dest.get(0).getKey();
-				// double min_wall_dist = Math.abs(piece_to_dest.get(0).getValue().y - enemy_runner_pos.y);
-				// for (Pair<Integer, Point> p : piece_to_dest) {
-				// 	if (Math.abs(p.getValue().y - enemy_runner_pos.y) < min_wall_dist){
-				// 		min_wall_dist = Math.abs(p.getValue().y - enemy_runner_pos.y);
-				// 		adapive_wall = p.getKey();
-				// 	}
-				// }
-
-				// System.out.println(min_wall_dist);
-				// if (!ignored_piece.contains(adapive_wall)) 
-				// 	pair = new Pair<Integer, Point>(adapive_wall, wall_point.get(adapive_wall));
 
 				Integer id = pair.getKey();
 				Point dest = pair.getValue(); 
@@ -242,7 +234,7 @@ public class Player implements flip.sim.Player
 			}
 
 			// start attacking
-			if (wall_complete) {
+			if (wall_complete || i >= num_trials) {
 				// try to send runners
 				if(attack_points.size() != 0 && num_moves - moves.size() == 2) {
 					for(int attack_index: attack_points.keySet()) {
