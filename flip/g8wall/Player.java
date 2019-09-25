@@ -23,7 +23,11 @@ public class Player implements flip.sim.Player
 	private boolean isplayer1;
 	private Integer n;
 	private Double diameter_piece;
-
+	
+	// Number of turns
+	private int turn_count = 0;
+	// Move one coin two times, or two coins one time each
+	private int coin_moves = 2;
 	// Stage variable: if the wall has been initialized
 	private boolean wall_init = false;
 	// Stage variable: if the wall has finished
@@ -59,6 +63,7 @@ public class Player implements flip.sim.Player
 
 	public List<Pair<Integer, Point>> getMoves(Integer num_moves, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, boolean isplayer1)
 	{
+		turn_count += 1;
 		List<Pair<Integer, Point>> moves = new ArrayList<Pair<Integer, Point>>();
 		
 		int greedy_num_trial = 100;
@@ -71,7 +76,7 @@ public class Player implements flip.sim.Player
 		pointsByX.sort((Map.Entry<Integer, Point> p1, Map.Entry<Integer, Point> p2) -> (p1.getValue().x > p2.getValue().x) ? 1 : -1);
 
 		//if n < 30, use greedy
-		if(n <= 30) {
+		if(n <= 30 || n >= 120) {
 			 for(int index = n-1; index >= 0 && moves.size()!=num_moves; index--) {
 				 int piece_id = pointsByX.get(index).getKey();
 				 Point curr_position = pointsByX.get(index).getValue();
@@ -232,13 +237,15 @@ public class Player implements flip.sim.Player
 			}
 
 			// Adaptive wall building
-			Point enemy_runner_pos = opponent_pieces.get(find_runner(opponent_pieces, isplayer1));
-			piece_to_dest.sort(
-				(Pair<Integer, Point> p1, Pair<Integer, Point> p2) -> 
-				distance(enemy_runner_pos, p1.getValue()) > distance(enemy_runner_pos, p2.getValue()) ? 1 : -1
-			);
-
-			for (Pair<Integer, Point> pair : piece_to_dest) {
+			if (n > 30 && n < 90) {
+				Point enemy_runner_pos = opponent_pieces.get(find_runner(opponent_pieces, isplayer1));
+				piece_to_dest.sort(
+					(Pair<Integer, Point> p1, Pair<Integer, Point> p2) -> 
+					distance(enemy_runner_pos, p1.getValue()) > distance(enemy_runner_pos, p2.getValue()) ? 1 : -1
+				);
+			}
+			for (int idx = 0; idx < piece_to_dest.size(); ++idx) {
+				Pair<Integer, Point> pair = piece_to_dest.get(idx);
 				if (!wall_complete && ignored_piece.size() == wall_point.size()) {
 					wall_complete = true;
 					back_wall_point = new HashMap<Integer, Point>(wall_point);
@@ -273,6 +280,20 @@ public class Player implements flip.sim.Player
 						move = new Pair<Integer, Point>(id, temp);
 						if (check_validity(move, player_pieces, opponent_pieces))
 							moves.add(move);
+						else {
+							temp = player_pieces.get(id);
+							temp.y += diameter_piece;
+							move = new Pair<Integer, Point>(id, temp);
+							if (check_validity(move, player_pieces, opponent_pieces))
+								moves.add(move);
+							else {
+								temp = player_pieces.get(id);
+								temp.y -= diameter_piece;
+								move = new Pair<Integer, Point>(id, temp);
+								if (check_validity(move, player_pieces, opponent_pieces))
+									moves.add(move);
+							}
+						}
 					}
 				}
 				++i;
@@ -281,6 +302,13 @@ public class Player implements flip.sim.Player
 			if (!wall_complete && ignored_piece.size() == wall_point.size()) {
 				wall_complete = true;
 				back_wall_point = new HashMap<Integer, Point>(wall_point);
+			}
+
+			// if can't build wall, force attacking
+			if (turn_count == 42 && !wall_complete) {
+				wall_complete = true;
+				back_wall_point = new HashMap<Integer, Point>(wall_point);
+				ignored_piece = new HashSet<Integer>(wall_point.keySet());
 			}
 
 			// start attacking
