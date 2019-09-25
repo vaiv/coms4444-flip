@@ -111,9 +111,9 @@ public class Player implements flip.sim.Player
 
             // If wall is detected, send runner immediately to disrupt
            if(this.mAntiWallStrategy.status == WallDetectionStatus.WALL_HOLE_DETECTED){
-                Log.log("CALLED WALL_HOLE_DETECTED " + moves.toString());
+                // Log.log("CALLED WALL_HOLE_DETECTED " + moves.toString());
                 this.mAntiWallStrategy.getAntiWallMove(moves, numMoves);
-                Log.log("CALLED WALL_HOLE_DETECTED " + moves.toString());
+                // Log.log("CALLED WALL_HOLE_DETECTED " + moves.toString());
             }
 
             // Runner needs to pass the wall first
