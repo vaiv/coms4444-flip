@@ -78,21 +78,21 @@ public class ObstacleAvoidance extends Move {
 		}
 
 		double theta = -Math.PI/2 + Math.PI * random.nextDouble();
-		double delta_x = 0;
-		double delta_y = 0;
+		double deltaX = 0;
+		double deltaY = 0;
 		if(Math.abs(opponentCentroid.x - teamCentroid.x) > maxCentroidDistance && (opponentCentroid.x > teamCentroid.x) && !isPlayer1) {
-			delta_x = diameterPiece * Math.cos(angleBetweenPalyerCenteroids);
-			delta_y = diameterPiece * Math.sin(angleBetweenPalyerCenteroids);
+			deltaX = diameterPiece * Math.cos(angleBetweenPalyerCenteroids);
+			deltaY = diameterPiece * Math.sin(angleBetweenPalyerCenteroids);
 		}else if(Math.abs(opponentCentroid.x - teamCentroid.x) > maxCentroidDistance && opponentCentroid.x < teamCentroid.x && isPlayer1) {
-			delta_x = diameterPiece * Math.cos(-angleBetweenPalyerCenteroids);
-			delta_y = diameterPiece * Math.sin(-angleBetweenPalyerCenteroids);
+			deltaX = diameterPiece * Math.cos(-angleBetweenPalyerCenteroids);
+			deltaY = diameterPiece * Math.sin(-angleBetweenPalyerCenteroids);
 		}else {
-			delta_x = diameterPiece * Math.cos(theta);
-			delta_y = diameterPiece * Math.sin(theta);
+			deltaX = diameterPiece * Math.cos(theta);
+			deltaY = diameterPiece * Math.sin(theta);
 		}
 
-		newPosition.x = isPlayer1 ? newPosition.x - delta_x : newPosition.x + delta_x;
-		newPosition.y += delta_y;
+		newPosition.x = isPlayer1 ? newPosition.x - deltaX : newPosition.x + deltaX;
+		newPosition.y += deltaY;
 		move = new Pair<Integer, Point>(piece_id, newPosition);
 
 		return move;

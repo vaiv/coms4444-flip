@@ -97,14 +97,12 @@ public class ObstacleCreation extends Move {
 
 			if(closestUnfinishedOpponentPieces.size() != 0) {
 				for(Integer id : closestUnfinishedOpponentPieces.keySet()) {
-					int possMoveID = -1;
 					double distanceY = Double.MAX_VALUE;
 					int index = -1;
 					for(int i = 0; i < possMoves.size(); i++) {
 						Pair<Integer, Point> possMove = possMoves.get(i);
 						double newDistanceY = Math.abs(possMove.getValue().y - closestUnfinishedOpponentPieces.get(id).y);
 						if(newDistanceY < distanceY) {
-							possMoveID = possMove.getKey();
 							distanceY = newDistanceY;
 							index = i;
 						}
@@ -168,14 +166,12 @@ public class ObstacleCreation extends Move {
 
 			if(closestUnfinishedOpponentPieces.size() != 0) {
 				for(Integer id : closestUnfinishedOpponentPieces.keySet()) {
-					int possMoveID = -1;
 					double distanceY = Double.MAX_VALUE;
 					int index = -1;
 					for(int i = 0; i < possMoves2.size(); i++) {
 						Pair<Integer, Point> possMove = possMoves2.get(i);
 						double newDistanceY = Math.abs(possMove.getValue().y - closestUnfinishedOpponentPieces.get(id).y);
 						if(newDistanceY < distanceY) {
-							possMoveID = possMove.getKey();
 							distanceY = newDistanceY;
 							index = i;
 						}
@@ -271,7 +267,7 @@ public class ObstacleCreation extends Move {
 			List<Point> points = moveCurrentToTarget(id, playerPieces.get(id), destination, playerPieces, opponentPieces);
 
 			for (Point point : points) {
-				move = new Pair(id, point);
+				move = new Pair<Integer, Point>(id, point);
 				moves.add(move);
 			}
 		}
@@ -310,9 +306,9 @@ public class ObstacleCreation extends Move {
 				moves.add(behind_current);
 			}
 		} else if (d > 2*diameterPiece && d <= 3 * diameterPiece) {
-			Point new_position = getNewPointFromOldPointAndAngle(current, theta);
-			moves.add(new_position);
-			moves.addAll(moveCurrentToTargetClose(new Pair<Integer, Point>(id, new_position), target, playerPieces, opponentPieces));
+			Point newPosition = getNewPointFromOldPointAndAngle(current, theta);
+			moves.add(newPosition);
+			moves.addAll(moveCurrentToTargetClose(new Pair<Integer, Point>(id, newPosition), target, playerPieces, opponentPieces));
 			if (moves.size() == 1) {
 				Point behind_current = new Point(current.x, current.y);
 				behind_current.x += isPlayer1 ? diameterPiece : -diameterPiece;
@@ -339,17 +335,17 @@ public class ObstacleCreation extends Move {
 		List<Point> moves = new ArrayList<>();
 		Integer current_id = current.getKey();
 		Point current_point = current.getValue();
-		double tmcx = target.x-current_point.x;
-		double tmcy = target.y-current_point.y;
-		double tmcx2 = tmcx/2;
-		double tmcy2 = tmcy/2;
-		double tpp2 = Math.atan(tmcy/tmcx);
-		double tmp2 = Math.acos(Math.sqrt(tmcx2*tmcx2 + tmcy2*tmcy2)/2);
+		double tmcx = target.x - current_point.x;
+		double tmcy = target.y - current_point.y;
+		double tmcx2 = tmcx / 2;
+		double tmcy2 = tmcy / 2;
+		double tpp2 = Math.atan(tmcy / tmcx);
+		double tmp2 = Math.acos(Math.sqrt(tmcx2 * tmcx2 + tmcy2 * tmcy2) / 2);
 		double theta = tpp2 + tmp2;
 		double phi = tpp2 - tmp2;
 
 		Point m1 = getNewPointFromOldPointAndAngle(current_point, theta);
-		Pair<Integer, Point> next = new Pair(current_id, m1);
+		Pair<Integer, Point> next = new Pair<Integer, Point>(current_id, m1);
 		if (checkValidity(next, playerPieces, opponentPieces, diameterPiece)) {
 			moves.add(m1);
 			Point m2 = getNewPointFromOldPointAndAngle(m1, phi);
@@ -369,10 +365,10 @@ public class ObstacleCreation extends Move {
 						theta -= i * Math.PI / numAngles;
 					else
 						theta += i * Math.PI / numAngles;
-					double delta_x = diameterPiece * Math.cos(theta);
-					double delta_y = diameterPiece * Math.sin(theta);
+					double deltaX = diameterPiece * Math.cos(theta);
+					double deltaY = diameterPiece * Math.sin(theta);
 
-					m1 = isPlayer1 ? new Point(current_point.x - delta_x, current_point.y + delta_y) : new Point(current_point.x + delta_x, current_point.y + delta_y);
+					m1 = isPlayer1 ? new Point(current_point.x - deltaX, current_point.y + deltaY) : new Point(current_point.x + deltaX, current_point.y + deltaY);
 					next = new Pair<Integer, Point>(current_id, m1);
 					if(checkValidity(next, playerPieces, opponentPieces, diameterPiece)) {
 						moves.add(m1);
@@ -391,13 +387,13 @@ public class ObstacleCreation extends Move {
 	 * @return
 	 */
 	public Point getNewPointFromOldPointAndAngle(Point current, double theta) {
-		Point new_position;
-		double delta_x = diameterPiece * Math.cos(theta);
-		double delta_y = diameterPiece * Math.sin(theta);
-		double x = current.x + (this.isPlayer1 ? -delta_x : delta_x);
-		double y = current.y + (this.isPlayer1 ? -delta_y : delta_y);
-		new_position = new Point(x, y);
-		return new_position;
+		Point newPosition;
+		double deltaX = diameterPiece * Math.cos(theta);
+		double deltaY = diameterPiece * Math.sin(theta);
+		double x = current.x + (this.isPlayer1 ? -deltaX : deltaX);
+		double y = current.y + (this.isPlayer1 ? -deltaY : deltaY);
+		newPosition = new Point(x, y);
+		return newPosition;
 	}
 
 	/**
@@ -466,10 +462,10 @@ public class ObstacleCreation extends Move {
 							theta -= i * Math.PI / numAngles;
 						else
 							theta += i * Math.PI / numAngles;
-						double delta_x = diameterPiece * Math.cos(theta);
-						double delta_y = diameterPiece * Math.sin(theta);
+						double deltaX = diameterPiece * Math.cos(theta);
+						double deltaY = diameterPiece * Math.sin(theta);
 
-						destination = new Point(p1.x + (isPlayer1 ? -delta_x : delta_x), p1.y + delta_y);
+						destination = new Point(p1.x + (isPlayer1 ? -deltaX : deltaX), p1.y + deltaY);
 						move = new Pair<Integer, Point>(id1, destination);
 						if (checkValidity(move, playerPieces, opponentPieces, diameterPiece)) {
 							

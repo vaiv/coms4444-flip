@@ -36,8 +36,8 @@ public class Aggressive extends Move {
 		Pair<Integer, Point> move = null;
 		if(n == 1) {			
 			for(Integer piece_id : player_pieces.keySet()) {
-				Point curr_position = player_pieces.get(piece_id);
-				Point new_position;
+				Point currPosition = player_pieces.get(piece_id);
+				Point newPosition;
 
 				double theta = 0;
 				double numAngles = 180;
@@ -46,14 +46,14 @@ public class Aggressive extends Move {
 						theta -= i * Math.PI / numAngles;
 					else
 						theta += i * Math.PI / numAngles;
-					double delta_x = diameter_piece * Math.cos(theta);
-					double delta_y = diameter_piece * Math.sin(theta);
+					double deltaX = diameter_piece * Math.cos(theta);
+					double deltaY = diameter_piece * Math.sin(theta);
 
-					new_position = isplayer1 ? new Point(curr_position.x - delta_x, curr_position.y + delta_y) : new Point(curr_position.x + delta_x, curr_position.y + delta_y);
-					move = new Pair<Integer, Point>(piece_id, new_position);
+					newPosition = isplayer1 ? new Point(currPosition.x - deltaX, currPosition.y + deltaY) : new Point(currPosition.x + deltaX, currPosition.y + deltaY);
+					move = new Pair<Integer, Point>(piece_id, newPosition);
 
 					if(checkValidity(move, player_pieces, opponent_pieces, diameter_piece)) {
-						player_pieces.put(piece_id, new_position);
+						player_pieces.put(piece_id, newPosition);
 						return move;
 					}
 				}
@@ -66,41 +66,41 @@ public class Aggressive extends Move {
 			double posMarker = isplayer1 ? 15.0 : -15.0;
 			for(Integer piece_id : closest_pieces.keySet()) {
 				if((isplayer1 && (closest_pieces.get(piece_id).x >= posMarker)) || (!isplayer1 && (closest_pieces.get(piece_id).x <= posMarker))) {
-					Point curr_position = player_pieces.get(piece_id);
-					Point new_position;
+					Point currPosition = player_pieces.get(piece_id);
+					Point newPosition;
 					double theta = 0;
-					double delta_x = diameter_piece * Math.cos(theta);
-					double delta_y = diameter_piece * Math.sin(theta);
+					double deltaX = diameter_piece * Math.cos(theta);
+					double deltaY = diameter_piece * Math.sin(theta);
 
-					new_position = isplayer1 ? new Point(curr_position.x - delta_x, curr_position.y + delta_y) : new Point(curr_position.x + delta_x, curr_position.y + delta_y);
-					move = new Pair<Integer, Point>(piece_id, new_position);
+					newPosition = isplayer1 ? new Point(currPosition.x - deltaX, currPosition.y + deltaY) : new Point(currPosition.x + deltaX, currPosition.y + deltaY);
+					move = new Pair<Integer, Point>(piece_id, newPosition);
 
 					if(checkValidity(move, player_pieces, opponent_pieces, diameter_piece)) {
-						player_pieces.put(piece_id, new_position);
+						player_pieces.put(piece_id, newPosition);
 						return move;
 					}
 				}
 			}
 			for(Integer piece_id : closest_pieces.keySet()) {
 				if((isplayer1 && (closest_pieces.get(piece_id).x < posMarker)) || (!isplayer1 && (closest_pieces.get(piece_id).x > posMarker))) {
-					Point curr_position = player_pieces.get(piece_id);
-					Point new_position;
+					Point currPosition = player_pieces.get(piece_id);
+					Point newPosition;
 					double theta = 0;
-					double delta_x = diameter_piece * Math.cos(theta);
-					double delta_y = diameter_piece * Math.sin(theta);
+					double deltaX = diameter_piece * Math.cos(theta);
+					double deltaY = diameter_piece * Math.sin(theta);
 
-					new_position = isplayer1 ? new Point(curr_position.x - delta_x, curr_position.y + delta_y) : new Point(curr_position.x + delta_x, curr_position.y + delta_y);
-					move = new Pair<Integer, Point>(piece_id, new_position);
+					newPosition = isplayer1 ? new Point(currPosition.x - deltaX, currPosition.y + deltaY) : new Point(currPosition.x + deltaX, currPosition.y + deltaY);
+					move = new Pair<Integer, Point>(piece_id, newPosition);
 
 					if(checkValidity(move, player_pieces, opponent_pieces, diameter_piece)) {
-						player_pieces.put(piece_id, new_position);
+						player_pieces.put(piece_id, newPosition);
 						return move;
 					}
 				}
 			}
 			for(Integer piece_id : closest_pieces.keySet()) {
-				Point curr_position = player_pieces.get(piece_id);
-				Point new_position;
+				Point currPosition = player_pieces.get(piece_id);
+				Point newPosition;
 
 				double theta = 0;
 				double numAngles = 180;
@@ -109,14 +109,14 @@ public class Aggressive extends Move {
 						theta -= i * Math.PI / numAngles;
 					else
 						theta += i * Math.PI / numAngles;
-					double delta_x = diameter_piece * Math.cos(theta);
-					double delta_y = diameter_piece * Math.sin(theta);
+					double deltaX = diameter_piece * Math.cos(theta);
+					double deltaY = diameter_piece * Math.sin(theta);
 
-					new_position = isplayer1 ? new Point(curr_position.x - delta_x, curr_position.y + delta_y) : new Point(curr_position.x + delta_x, curr_position.y + delta_y);
-					move = new Pair<Integer, Point>(piece_id, new_position);
+					newPosition = isplayer1 ? new Point(currPosition.x - deltaX, currPosition.y + deltaY) : new Point(currPosition.x + deltaX, currPosition.y + deltaY);
+					move = new Pair<Integer, Point>(piece_id, newPosition);
 
 					if(checkValidity(move, player_pieces, opponent_pieces, diameter_piece)) {
-						player_pieces.put(piece_id, new_position);
+						player_pieces.put(piece_id, newPosition);
 						return move;
 					}
 				}
@@ -128,8 +128,8 @@ public class Aggressive extends Move {
 			HashMap<Integer, Point> closest_pieces = getClosestPointsToOpponentBoundary(unfinished_pieces.size(), unfinished_pieces, isplayer1);
 			for(Integer pieceID : closest_pieces.keySet()) {
 				if((isplayer1 && closest_pieces.get(pieceID).x < startingBoundaryForAggressive) || (!isplayer1 && closest_pieces.get(pieceID).x > startingBoundaryForAggressive)) {
-					Point curr_position = player_pieces.get(pieceID);
-					Point new_position;
+					Point currPosition = player_pieces.get(pieceID);
+					Point newPosition;
 
 					double theta = 0;
 					double numAngles = 180;
@@ -138,14 +138,14 @@ public class Aggressive extends Move {
 							theta -= i * Math.PI / numAngles;
 						else
 							theta += i * Math.PI / numAngles;
-						double delta_x = diameter_piece * Math.cos(theta);
-						double delta_y = diameter_piece * Math.sin(theta);
+						double deltaX = diameter_piece * Math.cos(theta);
+						double deltaY = diameter_piece * Math.sin(theta);
 
-						new_position = isplayer1 ? new Point(curr_position.x - delta_x, curr_position.y + delta_y) : new Point(curr_position.x + delta_x, curr_position.y + delta_y);
-						move = new Pair<Integer, Point>(pieceID, new_position);
+						newPosition = isplayer1 ? new Point(currPosition.x - deltaX, currPosition.y + deltaY) : new Point(currPosition.x + deltaX, currPosition.y + deltaY);
+						move = new Pair<Integer, Point>(pieceID, newPosition);
 
 						if(checkValidity(move, player_pieces, opponent_pieces, diameter_piece)) {
-							player_pieces.put(pieceID, new_position);
+							player_pieces.put(pieceID, newPosition);
 							return move;
 						}
 					}
@@ -187,20 +187,20 @@ public class Aggressive extends Move {
 		}
 		
 		if(isEvenMove && counter < 5) {
-			Point curr_position = player_pieces.get(highPieceID);
-			Point new_position = new Point(curr_position);
+			Point currPosition = player_pieces.get(highPieceID);
+			Point newPosition = new Point(currPosition);
 			double theta = 0;
-			double delta_x = diameter_piece * Math.cos(theta);
-			double delta_y = diameter_piece * Math.sin(theta);
-			new_position.x = isplayer1 ? new_position.x - delta_x: new_position.x + delta_x;
-			new_position.y += delta_y;
-			player_pieces.put(highPieceID, new_position);
+			double deltaX = diameter_piece * Math.cos(theta);
+			double deltaY = diameter_piece * Math.sin(theta);
+			newPosition.x = isplayer1 ? newPosition.x - deltaX: newPosition.x + deltaX;
+			newPosition.y += deltaY;
+			player_pieces.put(highPieceID, newPosition);
 			counter++;
-			return new Pair<Integer, Point>(highPieceID, new_position);
+			return new Pair<Integer, Point>(highPieceID, newPosition);
 		} 
 		else {
-			Point curr_position = player_pieces.get(lowPieceID);
-			Point new_position = new Point(curr_position);
+			Point currPosition = player_pieces.get(lowPieceID);
+			Point newPosition = new Point(currPosition);
 			double theta = 0;
 			double numAngles = 180;
 			for(int i = 0; i <= numAngles; i++) {
@@ -208,15 +208,15 @@ public class Aggressive extends Move {
 					theta -= i * Math.PI / numAngles;
 				else
 					theta += i * Math.PI / numAngles;
-				double delta_x = diameter_piece * Math.cos(theta);
-				double delta_y = diameter_piece * Math.sin(theta);
+				double deltaX = diameter_piece * Math.cos(theta);
+				double deltaY = diameter_piece * Math.sin(theta);
 
-				new_position = isplayer1 ? new Point(curr_position.x - delta_x, curr_position.y + delta_y) : new Point(curr_position.x + delta_x, curr_position.y + delta_y);
-				Pair<Integer, Point> move = new Pair<Integer, Point>(lowPieceID, new_position);
+				newPosition = isplayer1 ? new Point(currPosition.x - deltaX, currPosition.y + deltaY) : new Point(currPosition.x + deltaX, currPosition.y + deltaY);
+				Pair<Integer, Point> move = new Pair<Integer, Point>(lowPieceID, newPosition);
 
 				if(checkValidity(move, player_pieces, opponent_pieces, diameter_piece)) {
-					player_pieces.put(lowPieceID, new_position);
-					if((isplayer1 && new_position.x < -22.0) || (!isplayer1 && new_position.x > 22.0))
+					player_pieces.put(lowPieceID, newPosition);
+					if((isplayer1 && newPosition.x < -22.0) || (!isplayer1 && newPosition.x > 22.0))
 						this.RUNNER_STRATEGY_SET = false;
 					return move;
 				}
