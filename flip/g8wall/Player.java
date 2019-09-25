@@ -219,10 +219,8 @@ public class Player implements flip.sim.Player
 					if (check_validity(move, player_pieces, opponent_pieces)) 
 						moves.add(move);
 					else { // move backwards to make space
-						// TODO: random
-						temp = player_pieces.get(id);
-						temp.x -= isplayer1 ? -diameter_piece : diameter_piece;
-						move = new Pair<Integer, Point>(id, temp);
+						move = get_random_move(id, player_pieces, opponent_pieces);
+						moves.add(move);
 					}
 				}
 				++i;	 
@@ -473,6 +471,29 @@ public class Player implements flip.sim.Player
 		}
 		return result;
 	}
+
+	// Find a random valid move, (can be invalid)
+	public Pair<Integer, Point> get_random_move(Integer piece_id, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces) {
+		int attemps = 0;
+		int max_attemps = 60;
+		while (attemps < max_attemps) {
+			Point curr_position = player_pieces.get(piece_id);
+			Point new_position = new Point(curr_position);
+			double theta = 2 * Math.PI * random.nextDouble();
+			double delta_x = diameter_piece * Math.cos(theta);
+			double delta_y = diameter_piece * Math.sin(theta);
+			new_position.x = isplayer1 ? new_position.x - delta_x : new_position.x + delta_x;
+			new_position.y += delta_y;
+			Pair<Integer, Point> move = new Pair<Integer, Point>(piece_id, new_position);
+			if(check_validity(move, player_pieces, opponent_pieces))
+				return move;
+			attemps += 1;
+		}
+		Point temp = player_pieces.get(piece_id);
+		temp.x += isplayer1 ? -diameter_piece : diameter_piece;
+		return new Pair<Integer, Point>(piece_id, temp);
+	}
+
 
 	public boolean check_validity(Pair<Integer, Point> move, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces)
     {
