@@ -4,7 +4,6 @@
     Year : 2019
     Instructor: Prof. Kenneth Ross
     URL: http://www.cs.columbia.edu/~kar/4444f19/
-
     Author: Vaibhav Darbari
     Simulator Version: 1.0
     
@@ -41,22 +40,22 @@ import java.io.*;
 
 public class Simulator
 {
-	private static final String root = "flip";
+    private static final String root = "flip";
     private static final String statics_root = "statics";
-	private static List<String> playerNames;
-	private static boolean gui = false;
-	private static double fps = 30;
-	private static Integer n_pieces = 10;
-	private static Integer seed = 42;
-	private static Integer runs = 1;
-	private static Integer turns = 200;
-	private static boolean swap_players = false;
+    private static List<String> playerNames;
+    private static boolean gui = false;
+    private static double fps = 30;
+    private static Integer n_pieces = 10;
+    private static Integer seed = 42;
+    private static Integer runs = 1;
+    private static Integer turns = 200;
+    private static boolean swap_players = false;
     private static long timeout = 1000;
     private static String version = "1.0";
 
     // state variables for gui
 
-	private static PlayerWrapper player1;
+    private static PlayerWrapper player1;
     private static PlayerWrapper player2;
 
     private static Integer player1_score;
@@ -72,13 +71,13 @@ public class Simulator
 
 
 
-	 public static void main(String[] args) throws ClassNotFoundException, InstantiationException, IllegalAccessException, IOException
-	 {
-	 	parseArgs(args);
+     public static void main(String[] args) throws ClassNotFoundException, InstantiationException, IllegalAccessException, IOException
+     {
+        parseArgs(args);
        
         Log.log("parsing done");
-	 	List<Pair<String, String>> pairs = new ArrayList<Pair<String, String>>();
-	 	HashMap<String, Pair<Integer, Integer>> player_wins = new HashMap<String, Pair<Integer, Integer>>();
+        List<Pair<String, String>> pairs = new ArrayList<Pair<String, String>>();
+        HashMap<String, Pair<Integer, Integer>> player_wins = new HashMap<String, Pair<Integer, Integer>>();
 
         HTTPServer server = null;
         if (gui) {
@@ -126,55 +125,55 @@ public class Simulator
 
         }
 
-	 	for(Integer i=0;i< playerNames.size(); i++)
-	 	{
+        for(Integer i=0;i< playerNames.size(); i++)
+        {
             System.out.println(playerNames.get(i));
-	 		for(int j = i+1; j<playerNames.size(); j++)
-	 		{
-	 			Pair<String, String> players = new Pair(playerNames.get(i),playerNames.get(j));
-	 			pairs.add(players);
-	 		}
-	 	}
+            for(int j = i+1; j<playerNames.size(); j++)
+            {
+                Pair<String, String> players = new Pair(playerNames.get(i),playerNames.get(j));
+                pairs.add(players);
+            }
+        }
 
         
-	 	for(Pair<String, String> pair : pairs)
-	 	{
-	 		swap_players = false;
-	 		Log.log("###############################################################################################################");
-	 		Log.log("games beginning for " + pair.getKey() + " and " + pair.getValue());
+        for(Pair<String, String> pair : pairs)
+        {
+            swap_players = false;
+            Log.log("###############################################################################################################");
+            Log.log("games beginning for " + pair.getKey() + " and " + pair.getValue());
 
             round = 0;
-	 		for(int i=0; i < runs; i++)
-	 		{
+            for(int i=0; i < runs; i++)
+            {
                 round++;
-	 			try 
-	 			{
-            		player1 = loadPlayerWrapper(cleanName(pair.getKey()), pair.getKey());
-            		player2 = loadPlayerWrapper(cleanName(pair.getValue()), pair.getValue());
-       			} 
-       			catch (Exception ex) 
-       			{
-            		Log.log("Unable to load players. " + ex.getMessage());
-            		System.exit(0);
-            	}
+                try 
+                {
+                    player1 = loadPlayerWrapper(cleanName(pair.getKey()), pair.getKey());
+                    player2 = loadPlayerWrapper(cleanName(pair.getValue()), pair.getValue());
+                } 
+                catch (Exception ex) 
+                {
+                    Log.log("Unable to load players. " + ex.getMessage());
+                    System.exit(0);
+                }
 
-            	if(swap_players)
-            	{
-            		PlayerWrapper tmp = player1;
-            		player1 = player2;
-            		player2 = tmp;
-            	}
+                if(swap_players)
+                {
+                    PlayerWrapper tmp = player1;
+                    player1 = player2;
+                    player2 = tmp;
+                }
 
-            	Log.log("player 1 is" + player1.getName());
-            	Log.log("player 2 is" + player2.getName());
+                Log.log("player 1 is" + player1.getName());
+                Log.log("player 2 is" + player2.getName());
 
 
-            	Board game = new Board(n_pieces, seed+round);
+                Board game = new Board(n_pieces, seed+round);
 
                 Log.log("Board setup complete.");
 
-            	HashMap<Integer, Point> player1_pieces = game.get_pieces(true);
-            	HashMap<Integer, Point> player2_pieces = game.get_pieces(false);
+                HashMap<Integer, Point> player1_pieces = game.get_pieces(true);
+                HashMap<Integer, Point> player2_pieces = game.get_pieces(false);
 
 
 
@@ -199,19 +198,19 @@ public class Simulator
                     continue;
                 }
 
-            	
+                
 
-            	Integer curr_score_player_1 = 0;
-            	Integer curr_score_player_2 = 0;
-            	PlayerWrapper winner;
-            	Integer winner_score;
+                Integer curr_score_player_1 = 0;
+                Integer curr_score_player_2 = 0;
+                PlayerWrapper winner;
+                Integer winner_score;
 
-            	for(int j=0;j<turns;j++)
-            	{
+                for(int j=0;j<turns;j++)
+                {
                     numTurns--;
-            		if(j == 0)
-            		{
-            			play_turn(player1, player2, game, 1, true);
+                    if(j == 0)
+                    {
+                        play_turn(player1, player2, game, 1, true);
                         player1_score = curr_score_player_1;
 
                         if (gui) 
@@ -219,47 +218,47 @@ public class Simulator
                             gui(server, state(fps));
                          }
 
-            			play_turn(player1, player2, game, 2, false);
+                        play_turn(player1, player2, game, 2, false);
                         player2_score = curr_score_player_2;
 
                         if (gui) 
                          {
                             gui(server, state(fps));
                          }
-            		}
-            		else
-            		{
-            			curr_score_player_1  = Math.max(play_turn(player1, player2, game, 2, true), curr_score_player_1);
+                    }
+                    else
+                    {
+                        curr_score_player_1  = Math.max(play_turn(player1, player2, game, 2, true), curr_score_player_1);
                         player1_score = curr_score_player_1;
 
-            			if(curr_score_player_1 == n_pieces)
-            			{
-            				winner = player1;
-            				break;
-            			}
+                        if(curr_score_player_1 == n_pieces)
+                        {
+                            winner = player1;
+                            break;
+                        }
 
                          if (gui) 
                          {
                             gui(server, state(fps));
                          }
 
-            			curr_score_player_2  = Math.max(play_turn(player1, player2, game, 2, false), curr_score_player_2);
+                        curr_score_player_2  = Math.max(play_turn(player1, player2, game, 2, false), curr_score_player_2);
                         player2_score = curr_score_player_2;
 
-            			if(curr_score_player_2 == n_pieces)
-            			{
-            				winner = player2;
-            				break;
-            			}
+                        if(curr_score_player_2 == n_pieces)
+                        {
+                            winner = player2;
+                            break;
+                        }
 
                         if (gui) 
                          {
                             gui(server, state(fps));
                          }
-            		}
-            	}
+                    }
+                }
 
-            	if (curr_score_player_1 > curr_score_player_2) 
+                if (curr_score_player_1 > curr_score_player_2) 
                     {
                         winner = player1;
                     }
@@ -270,46 +269,46 @@ public class Simulator
                 else
                     winner = null;
 
-            	Log.log("--------------------------------------------------------------------------------------------------------------");
-            	Log.log("Player 1: "+player1.getName()+" scored " + curr_score_player_1.toString() + " points at the end of this round");
-            	Log.log("Player 2: "+player2.getName()+" scored " + curr_score_player_2.toString() + " points at the end of this round");
+                Log.log("--------------------------------------------------------------------------------------------------------------");
+                Log.log("Player 1: "+player1.getName()+" scored " + curr_score_player_1.toString() + " points at the end of this round");
+                Log.log("Player 2: "+player2.getName()+" scored " + curr_score_player_2.toString() + " points at the end of this round");
 
-            	if(winner == null)
-            	{
-            		Log.log("This round of the game ended in a tie.");
-            	}
-            	else
-            	{
-            		Log.log(winner.getName() + " won the round.");
-            		if (winner == player1)
-            		{
-            			Pair<Integer,Integer> wins = player_wins.get(winner.getName());
-            			player_wins.put(winner.getName(), new Pair<Integer, Integer>(wins.getKey()+1, wins.getValue()));
-            		}
-            		else
-            		{
-            			Pair<Integer,Integer> wins = player_wins.get(winner.getName());
-            			player_wins.put(winner.getName(), new Pair<Integer, Integer>(wins.getKey(), wins.getValue()+1));
-            		}
-            	}
+                if(winner == null)
+                {
+                    Log.log("This round of the game ended in a tie.");
+                }
+                else
+                {
+                    Log.log(winner.getName() + " won the round.");
+                    if (winner == player1)
+                    {
+                        Pair<Integer,Integer> wins = player_wins.get(winner.getName());
+                        player_wins.put(winner.getName(), new Pair<Integer, Integer>(wins.getKey()+1, wins.getValue()));
+                    }
+                    else
+                    {
+                        Pair<Integer,Integer> wins = player_wins.get(winner.getName());
+                        player_wins.put(winner.getName(), new Pair<Integer, Integer>(wins.getKey(), wins.getValue()+1));
+                    }
+                }
 
                 if (gui) 
                  {
                     gui(server, state(fps));
                  }
 
-            	swap_players = !swap_players;
+                swap_players = !swap_players;
 
                 Log.log("--------------------------------------------------------------------------------------------------------------");
-        	}
+            }
 
 
-	 	}
+        }
 
-	 	Log.log("All games concluded!");
-	 	Log.log("----------------------------------------------Summary of results------------------------------------------");
-	 	Log.log("player name \t wins as first \t wins as second");
-	 	for (HashMap.Entry<String, Pair<Integer, Integer>> entry : player_wins.entrySet()) 
+        Log.log("All games concluded!");
+        Log.log("----------------------------------------------Summary of results------------------------------------------");
+        Log.log("player name \t wins as first \t wins as second");
+        for (HashMap.Entry<String, Pair<Integer, Integer>> entry : player_wins.entrySet()) 
         {
            Log.log(entry.getKey() + "\t\t" + entry.getValue().getKey().toString() + "\t\t" + entry.getValue().getValue().toString());
         }
@@ -326,7 +325,7 @@ public class Simulator
           }
         System.exit(0);
 
-	 }
+     }
 
      private static String cleanName(String s)
      {
@@ -341,11 +340,11 @@ public class Simulator
 
         return res;
      }
-	 private static Integer play_turn(PlayerWrapper player1, PlayerWrapper player2, Board game, Integer num_moves, boolean isplayer1 )
-	 {
-	 	Integer score = 0;
-	 	List<Pair<Integer, Point>> moves;
-	 	HashMap<Integer, Point> player1_pieces = game.get_pieces(true);
+     private static Integer play_turn(PlayerWrapper player1, PlayerWrapper player2, Board game, Integer num_moves, boolean isplayer1 )
+     {
+        Integer score = 0;
+        List<Pair<Integer, Point>> moves;
+        HashMap<Integer, Point> player1_pieces = game.get_pieces(true);
         HashMap<Integer, Point> player2_pieces = game.get_pieces(false);
 
         try
@@ -386,11 +385,11 @@ public class Simulator
         {
             Log.record("Player " + (isplayer1? "1":"2") + "turn ended with an exception. "  + ex.getMessage());
         }
-	 	
+        
         update_lists(player1_pieces, player2_pieces);
-	 	return score;
+        return score;
 
-	 }
+     }
 
      private static void update_lists(HashMap<Integer, Point> player1_pieces, HashMap<Integer, Point> player2_pieces)
      {
@@ -408,8 +407,8 @@ public class Simulator
         }
      }
 
-	 private static void parseArgs(String[] args) 
-	 {
+     private static void parseArgs(String[] args) 
+     {
         int i = 0;
         playerNames = new ArrayList<String>();
         for (; i < args.length; ++i) {
@@ -484,7 +483,7 @@ public class Simulator
                         if (++i == args.length) 
                         {
                             throw new IllegalArgumentException("Missing number of turns.");
-                        }			
+                        }           
                         turns = Integer.parseInt(args[i]);
                     }
                     else 

@@ -38,7 +38,7 @@ public abstract class Move {
 		return valid;
 
 	}
-	
+		
 	public HashMap<Integer, Point> getClosestPointsToOpponentBoundary(int numPoints, HashMap<Integer, Point> pieces, boolean isPlayer1) {
 		HashMap<Integer, Point> closest_pieces = new HashMap<>();
 		HashMap<Integer, Point> sorted_pieces = new HashMap<>();
@@ -109,4 +109,7 @@ public abstract class Move {
 			default: return null;
 		}
 	}
+	
+	public abstract void updatePieceInfo(HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces);
+
 }
