@@ -30,16 +30,16 @@ public abstract class Move {
 	public boolean checkValidity(Pair<Integer, Point> move, HashMap<Integer, Point> playerPieces, HashMap<Integer, Point> opponentPieces, Double diameterPiece) {
 		boolean valid = true;
 
-		// check if move is adjacent to previous position.
+		// Check if move is adjacent to previous position.
 		if(!Board.almostEqual(Board.getdist(playerPieces.get(move.getKey()), move.getValue()), diameterPiece))
 		{
 			return false;
 		}
-		// check for collisions
+		// Check for collisions
 		valid = valid && !Board.check_collision(playerPieces, move);
 		valid = valid && !Board.check_collision(opponentPieces, move);
 
-		// check within bounds
+		// Check within bounds
 		valid = valid && Board.check_within_bounds(move);
 		return valid;
 
@@ -59,14 +59,14 @@ public abstract class Move {
 			sorted_pieces.put(key, playerPieces.get(key));
 		Object[] sorted_pieces_array = sorted_pieces.entrySet().toArray();
 		if(isPlayer1) {
-			Arrays.sort(sorted_pieces_array, new Comparator() {
+			Arrays.sort(sorted_pieces_array, new Comparator<Object>() {
 			    public int compare(Object o1, Object o2) {
 			        return ((Double) (((Map.Entry<Integer, Point>) o1).getValue().x)).compareTo((Double) (((Map.Entry<Integer, Point>) o2).getValue().x));
 			    }
 			});			
 		}
 		else {
-			Arrays.sort(sorted_pieces_array, new Comparator() {
+			Arrays.sort(sorted_pieces_array, new Comparator<Object>() {
 			    public int compare(Object o1, Object o2) {
 			        return ((Double) (((Map.Entry<Integer, Point>) o2).getValue().x)).compareTo((Double) (((Map.Entry<Integer, Point>) o1).getValue().x));
 			    }

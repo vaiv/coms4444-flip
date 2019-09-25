@@ -4,10 +4,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Queue;
-import java.util.Random;
-
-import flip.g6.Move.Approach;
 import flip.sim.Board;
 import flip.sim.Point;
 import javafx.util.Pair;
@@ -87,14 +83,12 @@ public class ObstacleCreation extends Move {
 
 			if(closest_unfinished_opponent_pieces.size() != 0) {
 				for(Integer id : closest_unfinished_opponent_pieces.keySet()) {
-					int possMoveID = -1;
 					double distanceY = Double.MAX_VALUE;
 					int index = -1;
 					for(int i = 0; i < possMoves.size(); i++) {
 						Pair<Integer, Point> possMove = possMoves.get(i);
 						double newDistanceY = Math.abs(possMove.getValue().y - closest_unfinished_opponent_pieces.get(id).y);
 						if(newDistanceY < distanceY) {
-							possMoveID = possMove.getKey();
 							distanceY = newDistanceY;
 							index = i;
 						}
@@ -158,14 +152,12 @@ public class ObstacleCreation extends Move {
 
 			if(closest_unfinished_opponent_pieces.size() != 0) {
 				for(Integer id : closest_unfinished_opponent_pieces.keySet()) {
-					int possMoveID = -1;
 					double distanceY = Double.MAX_VALUE;
 					int index = -1;
 					for(int i = 0; i < possMoves2.size(); i++) {
 						Pair<Integer, Point> possMove = possMoves2.get(i);
 						double newDistanceY = Math.abs(possMove.getValue().y - closest_unfinished_opponent_pieces.get(id).y);
 						if(newDistanceY < distanceY) {
-							possMoveID = possMove.getKey();
 							distanceY = newDistanceY;
 							index = i;
 						}
@@ -250,7 +242,7 @@ public class ObstacleCreation extends Move {
 			List<Point> points = moveCurrentToTarget(id, player_pieces.get(id), destination, player_pieces, opponent_pieces);
 
 			for (Point point : points) {
-				move = new Pair(id, point);
+				move = new Pair<Integer, Point>(id, point);
 				moves.add(move);
 			}
 		}
@@ -311,7 +303,7 @@ public class ObstacleCreation extends Move {
 		double phi = tpp2 - tmp2;
 
 		Point m1 = getNewPointFromOldPointAndAngle(current_point, theta);
-		Pair<Integer, Point> next = new Pair(current_id, m1);
+		Pair<Integer, Point> next = new Pair<Integer, Point>(current_id, m1);
 		if (checkValidity(next, player_pieces, opponent_pieces, diameterPiece)) {
 			moves.add(m1);
 			Point m2 = getNewPointFromOldPointAndAngle(m1, phi);

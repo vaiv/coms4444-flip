@@ -34,7 +34,7 @@ public class ObstacleAvoidance extends Move {
 		HashMap<Integer, Point> unfinished_pieces = getUnfinishedPlayerPieces(player_pieces, isplayer1, Approach.AVOIDANCE);
 		HashMap<Integer, Point> closest_pieces = getClosestPointsToOpponentBoundary(n / 2, unfinished_pieces, isplayer1);
 		HashMap<Integer, Point> relevant_pieces = (HashMap<Integer, Point>) player_pieces.clone();
-
+		
 		for(Integer id : closest_pieces.keySet()) {
 			relevant_pieces.remove(id);
 		}
