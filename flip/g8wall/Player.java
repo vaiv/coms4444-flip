@@ -38,12 +38,8 @@ public class Player implements flip.sim.Player
 	private HashMap<Integer, Point> runner_points = new HashMap<Integer, Point>();
 	// indicates if a coin should be not be moved, like coins forming a wall
 	private HashSet<Integer> ignored_piece = new HashSet<Integer>();
-	// indexes for attackers
-	private HashSet<Integer> attackers = new HashSet<Integer>();
 	// temporary variable to store current destination of each piece
 	private ArrayList<Pair<Integer, Point>> piece_to_dest = new ArrayList<Pair<Integer, Point>>();
-	// cached moves, the moves is always valid
-	private ArrayList<Pair<Integer, Point>> cached_moves = new ArrayList<Pair<Integer, Point>>();
 
 	public Player()
 	{
@@ -64,26 +60,42 @@ public class Player implements flip.sim.Player
 	public List<Pair<Integer, Point>> getMoves(Integer num_moves, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, boolean isplayer1)
 	{
 		List<Pair<Integer, Point>> moves = new ArrayList<Pair<Integer, Point>>();
-
-		int num_trials = 60;
+		
+		int greedy_num_trial = 100;
+		double dist_inner = 20.0 + ((double)n)/30.0;
+		int num_trials = 30;
 		int i = 0;
+		
+		// sort by x
+		List<Map.Entry<Integer,Point>> pointsByX = new ArrayList<Entry<Integer, Point>>(player_pieces.entrySet());
+		pointsByX.sort((Map.Entry<Integer, Point> p1, Map.Entry<Integer, Point> p2) -> (p1.getValue().x > p2.getValue().x) ? 1 : -1);
 
-		//if n < 30, use greedy
-		if(n < 30) {
-			 for(int piece_id = 0; piece_id < n && moves.size()!=num_moves; piece_id++) {
-				 
-				 Point curr_position = player_pieces.get(piece_id);
-				 if((isplayer1 && curr_position.x<-20) || (!isplayer1 && curr_position.x>20))
+		//if n < 20, use greedy
+		if(n < 20) {
+			 for(int index = n-1; index >= 0 && moves.size()!=num_moves; index--) {
+				 int piece_id = pointsByX.get(index).getKey();
+				 Point curr_position = pointsByX.get(index).getValue();
+				 if((isplayer1 && curr_position.x<-dist_inner) || (!isplayer1 && curr_position.x>dist_inner))
 					 continue;
 				 Point new_position = new Point(curr_position);
 				 new_position.x = isplayer1 ? new_position.x - diameter_piece : new_position.x + diameter_piece;
 				 
 				 Pair<Integer, Point> move = new Pair<Integer, Point>(piece_id, new_position);
-				 if(check_validity(move, player_pieces, opponent_pieces))
-				 	moves.add(move);
+				 if(check_validity(move, player_pieces, opponent_pieces)) {
+					 moves.add(move);
+					 if((isplayer1 && curr_position.x<-dist_inner) || (!isplayer1 && curr_position.x>dist_inner)) {
+						 continue;
+					 }
+					 double x = isplayer1 ? new_position.x - diameter_piece : new_position.x + diameter_piece;
+					 move = new Pair<Integer, Point>(piece_id, new Point(x, new_position.y));
+					 if(moves.size()!=num_moves && check_validity_(move, player_pieces, opponent_pieces)) {
+						 moves.add(move);
+					 }
+				 }
 			 }
-
-			 while(moves.size()!=num_moves && i<num_trials)
+			 
+			 i = 0;
+			 while(moves.size()!=num_moves && i<greedy_num_trial)
 			 {
 			 	Integer piece_id = random.nextInt(n);
 			 	Point curr_position = player_pieces.get(piece_id);
@@ -95,8 +107,48 @@ public class Player implements flip.sim.Player
 			 	new_position.x = isplayer1 ? new_position.x - delta_x : new_position.x + delta_x;
 			 	new_position.y += delta_y;
 			 	Pair<Integer, Point> move = new Pair<Integer, Point>(piece_id, new_position);
-			 	if(check_validity(move, player_pieces, opponent_pieces))
+			 	if(check_validity(move, player_pieces, opponent_pieces)) {
 			 		moves.add(move);
+			 		if((isplayer1 && curr_position.x<-dist_inner) || (!isplayer1 && curr_position.x>dist_inner)) {
+						 continue;
+					 }
+					 double x = isplayer1 ? new_position.x - diameter_piece : new_position.x + diameter_piece;
+					 move = new Pair<Integer, Point>(piece_id, new Point(x, new_position.y));
+					 if(moves.size()!=num_moves && check_validity_(move, player_pieces, opponent_pieces)) {
+						 moves.add(move);
+					 }
+			 	}
+			 		
+			 	i++;
+			 }
+			 i = 0;
+			 while(moves.size()!=num_moves && i<greedy_num_trial)
+			 {
+			 	Integer piece_id = random.nextInt(n);
+			 	Point curr_position = player_pieces.get(piece_id);
+			 	if((isplayer1 && curr_position.x<-dist_inner) || (!isplayer1 && curr_position.x>dist_inner)) {
+					 continue;
+				 }
+			 	Point new_position = new Point(curr_position);
+
+			 	double theta = -Math.PI/2 + Math.PI * random.nextDouble();
+			 	double delta_x = diameter_piece * Math.cos(theta);
+			 	double delta_y = diameter_piece * Math.sin(theta);
+			 	new_position.x = isplayer1 ? new_position.x + delta_x : new_position.x - delta_x;
+			 	new_position.y -= delta_y;
+			 	Pair<Integer, Point> move = new Pair<Integer, Point>(piece_id, new_position);
+			 	if(check_validity(move, player_pieces, opponent_pieces)) {
+			 		moves.add(move);
+			 		if((isplayer1 && curr_position.x<-dist_inner) || (!isplayer1 && curr_position.x>dist_inner)) {
+						 continue;
+					 }
+					 double x = isplayer1 ? new_position.x - diameter_piece : new_position.x + diameter_piece;
+					 move = new Pair<Integer, Point>(piece_id, new Point(x, new_position.y));
+					 if(moves.size()!=num_moves && check_validity_(move, player_pieces, opponent_pieces)) {
+						 moves.add(move);
+					 }
+			 	}
+			 		
 			 	i++;
 			 }
 			 
@@ -118,22 +170,27 @@ public class Player implements flip.sim.Player
 			// if has runner, it goes first
 			if(runner_points.size() != 0) {
 				// try straight forward
-				for(int runner_id: runner_points.keySet()) {
-					if(moves.size() == num_moves)
-						break;
-					 Point curr_position = player_pieces.get(runner_id);
+				for(int index = n-1; index >= 0 && moves.size()!=num_moves; index--) {
+					 int runner_id = pointsByX.get(index).getKey();
+					 if(!runner_points.containsKey(runner_id))
+						 continue;
+					 Point curr_position = pointsByX.get(index).getValue();
+					 if((isplayer1 && curr_position.x<-dist_inner) || (!isplayer1 && curr_position.x>dist_inner)) {
+						 runner_points.remove(runner_id);
+						 continue;
+					 }
+					 if((isplayer1 && curr_position.x<-dist_inner) || (!isplayer1 && curr_position.x>dist_inner))
+						 continue;
 					 Point new_position = new Point(curr_position);
 					 new_position.x = isplayer1 ? new_position.x - diameter_piece : new_position.x + diameter_piece;
 					 
 					 Pair<Integer, Point> move = new Pair<Integer, Point>(runner_id, new_position);
 					 if(check_validity(move, player_pieces, opponent_pieces)) {
 						 moves.add(move);
-						 if((isplayer1 && curr_position.x<-25) || (!isplayer1 && curr_position.x>25)) {
-							 runner_points.remove(runner_id);
-						 }
+						 
 						 double x = isplayer1 ? new_position.x - diameter_piece : new_position.x + diameter_piece;
 						 move = new Pair<Integer, Point>(runner_id, new Point(x, new_position.y));
-						 if(moves.size()!=num_moves && check_validity(move, player_pieces, opponent_pieces)) {
+						 if(moves.size()!=num_moves && check_validity_(move, player_pieces, opponent_pieces)) {
 							 moves.add(move);
 						 }
 					 }
@@ -144,6 +201,10 @@ public class Player implements flip.sim.Player
 					Integer[] keys = runner_points.keySet().toArray(new Integer[0]);
 					Integer piece_id = keys[random.nextInt(keys.length)];
 				 	Point curr_position = player_pieces.get(piece_id);
+				 	if((isplayer1 && curr_position.x<-dist_inner) || (!isplayer1 && curr_position.x>dist_inner)) {
+						 runner_points.remove(piece_id);
+						 continue;
+					 }
 				 	Point new_position = new Point(curr_position);
 
 				 	double theta = -Math.PI/2 + Math.PI * random.nextDouble();
@@ -157,7 +218,8 @@ public class Player implements flip.sim.Player
 				 	j++;
 				}
 			}
-			// Set current wall buidling objective
+
+			// Set current wall building objective
 			if (!wall_init) {
 				ArrayList<Point> wall = find_wall_points(isplayer1 ? 21 : -21, 1.45, 1.75); // positions for wall
 				for (Point point : wall) {
@@ -169,19 +231,6 @@ public class Player implements flip.sim.Player
 				wall_init = true;
 			}
 
-			// for (Pair<Integer, Point> pair : piece_to_dest) {
-			// 	Integer id = pair.getKey();
-			// 	Point dest = pair.getValue();
-			// 	if (ignored_piece.contains(id)) continue;
-			// 	while (moves.size() < num_moves && i < num_trials) {
-			// 		Point temp = find_move_exact(player_pieces.get(id), dest);
-			// 		Pair<Integer, Point> move = new Pair<Integer, Point>(id, temp);
-			// 		if(check_validity(move, player_pieces, opponent_pieces))
-			// 			moves.add(move);
-			// 		++i;
-			// 	}
-			// }
-
 			// Adaptive wall building
 			Point enemy_runner_pos = opponent_pieces.get(find_runner(opponent_pieces, isplayer1));
 			piece_to_dest.sort(
@@ -189,7 +238,7 @@ public class Player implements flip.sim.Player
 				distance(enemy_runner_pos, p1.getValue()) > distance(enemy_runner_pos, p2.getValue()) ? 1 : -1
 			);
 
-			for (Pair<Integer, Point> pair : piece_to_dest) { // TODO: adaptive wall building
+			for (Pair<Integer, Point> pair : piece_to_dest) {
 				if (!wall_complete && ignored_piece.size() == wall_point.size()) {
 					wall_complete = true;
 					back_wall_point = new HashMap<Integer, Point>(wall_point);
@@ -218,7 +267,7 @@ public class Player implements flip.sim.Player
 					move = new Pair<Integer, Point>(id, temp);
 					if (check_validity(move, player_pieces, opponent_pieces)) 
 						moves.add(move);
-					else { // move backwards to make space
+					else { // try random moves
 						move = get_random_move(id, player_pieces, opponent_pieces);
 						moves.add(move);
 					}
@@ -232,7 +281,7 @@ public class Player implements flip.sim.Player
 			}
 
 			// start attacking
-			if (wall_complete || i >= num_trials) {
+			if (wall_complete || i >= num_trials){
 				// try to send runners
 				if(attack_points.size() != 0 && num_moves - moves.size() == 2) {
 					for(int attack_index: attack_points.keySet()) {
@@ -264,15 +313,13 @@ public class Player implements flip.sim.Player
 				}
 				// try to send attackers
 				if(moves.size() < num_moves) {
-					List<Map.Entry<Integer,Point>> pointsByX = new ArrayList<Entry<Integer, Point>>(player_pieces.entrySet());
-					pointsByX.sort((Map.Entry<Integer, Point> p1, Map.Entry<Integer, Point> p2) -> (p1.getValue().x > p2.getValue().x) ? 1 : -1);
 					if(!isplayer1)
 						Collections.reverse(pointsByX);
 					
 				    for(Map.Entry<Integer, Point> p: pointsByX) {
 				    		if(ignored_piece.contains(p.getKey()))
 				    			continue;
-				    		Integer wall_index = closest(p.getValue(), back_wall_point, (HashSet<Integer>)null); 
+				    		Integer wall_index = closestY(p.getValue(), back_wall_point, (HashSet<Integer>)null); 
 						Point attack_pos = new Point(back_wall_point.get(wall_index));
 						attack_pos.x -= isplayer1 ? -diameter_piece : diameter_piece;
 						while(moves.size() < num_moves) {
@@ -432,7 +479,7 @@ public class Player implements flip.sim.Player
 				continue;
 			Integer id = i;
 			Point p = pieces.get(id);
-			double distance = Math.sqrt(Math.pow(point.x - p.x, 2) + Math.pow(point.y - p.y, 2));
+			double distance = Math.pow(point.x - p.x, 2) + Math.pow(point.y - p.y, 2);
 			if (distance < min_distance) {
 				min_distance = distance;
 				result_id = id;
@@ -449,7 +496,24 @@ public class Player implements flip.sim.Player
 				continue;
 			Integer id = i;
 			Point p = pieces.get(id);
-			double distance = Math.sqrt(Math.pow(point.x - p.x, 2) + Math.pow(point.y - p.y, 2));
+			double distance = Math.pow(point.x - p.x, 2) + Math.pow(point.y - p.y, 2);
+			if (distance < min_distance) {
+				min_distance = distance;
+				result_id = id;
+			} 
+		}
+		return result_id;
+	}
+	
+	public Integer closestY(Point point, HashMap<Integer, Point> pieces, HashSet<Integer> ignore) {
+		double min_distance = Double.MAX_VALUE;
+		Integer result_id = null;
+		for (Integer i: pieces.keySet()) {
+			if (ignore != null && ignore.contains(i)) 
+				continue;
+			Integer id = i;
+			Point p = pieces.get(id);
+			double distance = Math.abs(point.y - p.y);
 			if (distance < min_distance) {
 				min_distance = distance;
 				result_id = id;
@@ -494,7 +558,6 @@ public class Player implements flip.sim.Player
 		return new Pair<Integer, Point>(piece_id, temp);
 	}
 
-
 	public boolean check_validity(Pair<Integer, Point> move, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces)
     {
         boolean valid = true;
@@ -504,6 +567,20 @@ public class Player implements flip.sim.Player
             {
                 return false;
             }
+        // check for collisions
+        valid = valid && !Board.check_collision(player_pieces, move);
+        valid = valid && !Board.check_collision(opponent_pieces, move);
+
+        // check within bounds
+        valid = valid && Board.check_within_bounds(move);
+        return valid;
+
+    }
+	
+	public boolean check_validity_(Pair<Integer, Point> move, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces)
+    {
+        boolean valid = true;
+       
         // check for collisions
         valid = valid && !Board.check_collision(player_pieces, move);
         valid = valid && !Board.check_collision(opponent_pieces, move);
