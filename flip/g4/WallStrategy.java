@@ -195,7 +195,7 @@ class WallStrategy{
         }
 
         this.numMovesRequired += moves.size();
-        if (moves.size()==0) {
+        if (moves.size() < numMoves) {
             List<Integer> piecesLeft = new ArrayList<Integer>();
             for(int i=0; i<11; i++){
                 if(!Board.almostEqual(
