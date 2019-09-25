@@ -1,16 +1,10 @@
 package flip.g6;
 import java.util.List;
-import java.util.Collections;
-import java.util.List;
 import java.util.Random;
 import java.util.HashMap;
 import javafx.util.Pair; 
 import java.util.ArrayList;
-import java.util.Arrays;
-
 import flip.sim.Point;
-import flip.sim.Board;
-import flip.sim.Log;
 
 public class Player implements flip.sim.Player
 {
@@ -19,7 +13,7 @@ public class Player implements flip.sim.Player
 	private Random random;
 	private boolean isPlayer1;
 	private Integer n;
-	private Double diameter_piece;
+	private Double diameterPiece;
 	private boolean strategiesDefined = false;
 	private Aggressive aggressive;
 	private ObstacleAvoidance obstacleAvoidance;
@@ -42,11 +36,11 @@ public class Player implements flip.sim.Player
 	/**
 	 * 
 	 */
-	public void init(HashMap<Integer, Point> pieces, int n, double t, boolean isPlayer1, double diameter_piece)
+	public void init(HashMap<Integer, Point> pieces, int n, double t, boolean isPlayer1, double diameterPiece)
 	{
 		this.n = n;
 		this.isPlayer1 = isPlayer1;
-		this.diameter_piece = diameter_piece;
+		this.diameterPiece = diameterPiece;
 	}
 
 	/**
@@ -61,19 +55,11 @@ public class Player implements flip.sim.Player
 		this.opponentPieces = opponentPieces;	
 		
 		List<Pair<Integer, Point>> moves = new ArrayList<>();		
-	
-		System.out.println();
-		System.out.println();
-		System.out.println();
-		System.out.println("New turn of move(s)");
-		System.out.println();
-		System.out.println();
-		System.out.println();
-		
+			
 		if(!strategiesDefined) {
-			aggressive = new Aggressive(playerPieces, opponentPieces, isPlayer1, n, diameter_piece);
-			obstacleAvoidance = new ObstacleAvoidance(playerPieces, opponentPieces, isPlayer1, n, diameter_piece);
-			obstacleCreation = new ObstacleCreation(playerPieces, opponentPieces, isPlayer1, n, diameter_piece);
+			aggressive = new Aggressive(playerPieces, opponentPieces, isPlayer1, n, diameterPiece);
+			obstacleAvoidance = new ObstacleAvoidance(playerPieces, opponentPieces, isPlayer1, n, diameterPiece);
+			obstacleCreation = new ObstacleCreation(playerPieces, opponentPieces, isPlayer1, n, diameterPiece);
 			this.strategiesDefined = true;
 		}
 		else {
@@ -82,9 +68,7 @@ public class Player implements flip.sim.Player
 			obstacleCreation.updatePieceInfo(playerPieces, opponentPieces);
 		}
 
-		for(int i = 0; i < numMoves; i++) {			
-			double randomValue = Math.random();		
-
+		for(int i = 0; i < numMoves; i++) {
 			if(n <= 15) {
 				moves.add(aggressive.getMove());
 			}
@@ -161,11 +145,11 @@ public class Player implements flip.sim.Player
 	}
 
 	public Double getDiameterPiece() {
-		return diameter_piece;
+		return diameterPiece;
 	}
 
-	public void setDiameterPiece(Double diameter_piece) {
-		this.diameter_piece = diameter_piece;
+	public void setDiameterPiece(Double diameterPiece) {
+		this.diameterPiece = diameterPiece;
 	}
 
 	public boolean isStrategiesDefined() {
