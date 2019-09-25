@@ -63,15 +63,15 @@ public class Player implements flip.sim.Player
 		
 		int greedy_num_trial = 100;
 		double dist_inner = 20.0 + ((double)n)/30.0;
-		int num_trials = 30;
+		int num_trials = 40;
 		int i = 0;
 		
 		// sort by x
 		List<Map.Entry<Integer,Point>> pointsByX = new ArrayList<Entry<Integer, Point>>(player_pieces.entrySet());
 		pointsByX.sort((Map.Entry<Integer, Point> p1, Map.Entry<Integer, Point> p2) -> (p1.getValue().x > p2.getValue().x) ? 1 : -1);
 
-		//if n < 20, use greedy
-		if(n < 20) {
+		//if n < 30, use greedy
+		if(n <= 30) {
 			 for(int index = n-1; index >= 0 && moves.size()!=num_moves; index--) {
 				 int piece_id = pointsByX.get(index).getKey();
 				 Point curr_position = pointsByX.get(index).getValue();
@@ -268,11 +268,14 @@ public class Player implements flip.sim.Player
 					if (check_validity(move, player_pieces, opponent_pieces)) 
 						moves.add(move);
 					else { // try random moves
-						move = get_random_move(id, player_pieces, opponent_pieces);
-						moves.add(move);
+						temp = player_pieces.get(id);
+						temp.x += isplayer1 ? -diameter_piece : diameter_piece;
+						move = new Pair<Integer, Point>(id, temp);
+						if (check_validity(move, player_pieces, opponent_pieces))
+							moves.add(move);
 					}
 				}
-				++i;	 
+				++i;
 			}
 
 			if (!wall_complete && ignored_piece.size() == wall_point.size()) {
@@ -539,7 +542,7 @@ public class Player implements flip.sim.Player
 	// Find a random valid move, (can be invalid)
 	public Pair<Integer, Point> get_random_move(Integer piece_id, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces) {
 		int attemps = 0;
-		int max_attemps = 60;
+		int max_attemps = 1;
 		while (attemps < max_attemps) {
 			Point curr_position = player_pieces.get(piece_id);
 			Point new_position = new Point(curr_position);
