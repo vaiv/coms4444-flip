@@ -883,10 +883,10 @@ public class Player implements flip.sim.Player
         double tmcx2 = tmcx/2;
         double tmcy2 = tmcy/2;
         double tpp2 = Math.atan(tmcy/tmcx);
+        tpp2 = isInFrontOf(current.getValue(), target) ? Math.PI + tpp2 : tpp2;
         double tmp2 = Math.acos(Math.sqrt(tmcx2*tmcx2 + tmcy2*tmcy2)/2);
         double theta = tpp2 + tmp2;
         //theta = isInFrontOf(current.getValue(), target) ? Math.PI + theta : theta;
-        tpp2 = isInFrontOf(current.getValue(), target) ? Math.PI + tpp2 : tpp2;
         double phi = tpp2 - tmp2;
         // if you are blocked, take the other angle first
         Pair<Integer, Point> move = getSingleValidMove(current_id, player_pieces, opponent_pieces, theta, this.isplayer1);
