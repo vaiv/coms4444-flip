@@ -44,10 +44,11 @@ public class Player implements flip.sim.Player
 	}
 
 	/**
-	 * numMoves:
-	 * playerPieces: 
-	 * opponentPieces: 
-	 * isPlayer1: 
+	 * Get moves for Player
+	 * numMoves: Total number of moves
+	 * playerPieces: Player pieces
+	 * opponentPieces: Opponent pieces
+	 * isPlayer1: Flag to check if player is player one
 	 */
 	public List<Pair<Integer, Point>> getMoves(Integer numMoves, HashMap<Integer, Point> playerPieces, HashMap<Integer, Point> opponentPieces, boolean isPlayer1) {
 
