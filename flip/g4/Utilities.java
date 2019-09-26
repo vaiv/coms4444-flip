@@ -86,6 +86,55 @@ class Utilities{
         return Board.check_within_bounds(move);
     }
 
+    public static Pair<Integer, Point> getForwardishMove(Point a, Point b,
+        Integer pieceID,
+        HashMap<Integer, Point> playerPieces,
+        HashMap<Integer, Point> opponentPieces){
+
+            Pair <Integer, Point> move;
+            double dist = Board.getdist(a, b);
+        
+            if (Board.almostEqual(dist, 0))
+                return null;
+            
+            move = new Pair<Integer, Point>(pieceID,  new Point(
+                a.x + 2 * (b.x - a.x) / dist,
+                a.y + 2 * (b.y - a.y) / dist
+            ));
+
+            if(check_validity(move, playerPieces, opponentPieces))
+                return move;
+    
+            else {
+                for (HashMap.Entry<Integer, Point> entry : opponentPieces.entrySet()) {
+                    if (Board.getdist(move.getValue(), entry.getValue()) < 2.0)
+                    {
+                        Point c = entry.getValue();
+                        double x1 = 0.5 * (c.x + a.x);
+                        double y1 = 0.5 * (c.y + a.y);
+
+                        double sqrt_const = Math.sqrt(16/(dist*dist)-1) / 2;
+                        double x2 = sqrt_const * (c.y - a.y);
+                        double y2 = sqrt_const * (a.x - c.x);
+
+                        move = new Pair<Integer, Point>(pieceID, new Point(x1+x2, y1+y2));
+                        if(check_validity(move, playerPieces, opponentPieces)){
+                            return move;
+                        }
+                        
+                        move = new Pair<Integer, Point>(pieceID, new Point(x1-x2, y1-y2));
+                        if(check_validity(move, playerPieces, opponentPieces)){
+                            return move;
+                        }
+                        
+                        return null;
+                    }
+                        
+                }
+                return null;
+            }
+        }
+
     public static Pair<Integer, Point> getNextMove(Point a, Point b, 
         Integer pieceID,
         HashMap<Integer, Point> playerPieces,

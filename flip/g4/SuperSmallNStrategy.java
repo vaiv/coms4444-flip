@@ -36,7 +36,6 @@ class SuperSmallNStrategy {
     	private int stepsToGoal(Point piece, boolean isPlayer1) {
 		// Returns the number of steps to the finish line for a piece, assuming it always go straight forward
 		double dist;  // distance on x-direction to finish line
-		double diameter_piece = 2.0;  // diameter of each piece
 		if (isPlayer1) {
 			dist = piece.x + 21.0;  // finish line at x = -21.0, piece moves to the left
 		}
@@ -70,7 +69,6 @@ class SuperSmallNStrategy {
 	private Pair<Integer,Point> moveForward(HashMap<Integer,Point> playerPieces, HashMap<Integer,Point> opponentPieces, boolean isPlayer1) {
 		// Move a piece as forward as possible
 		Point oldPosition = playerPieces.get(0);  // get the original position of the (only) piece
-		double diameter_piece = 2.0;  // diameter of each piece
 		for (int trial_num = 0; trial_num < 200; trial_num++) {
 			// Select an angle of turn that changes from 0 deg to 100 deg
 			double theta = ((random.nextDouble() > 0.5)? -1 : 1) * trial_num * 0.5 * Math.PI / 180.0;
@@ -131,12 +129,16 @@ class SuperSmallNStrategy {
 				return moves;
 			}
 			else {
-				// You are losing after the two moves, refuse to move
-				//System.out.println("Player is losing and refuses to move.");
-				Pair<Integer,Point> nmove1 = new Pair<Integer,Point>(0, oldPosition);
-				Pair<Integer,Point> nmove2 = new Pair<Integer,Point>(0, oldPosition);
-				moves.add(nmove1);
-				moves.add(nmove2);
+				// You are losing after the two moves, move to the stop position immediately next to opponent piece
+				//System.out.println("Player is losing and moves to the stop position.");
+				double stop_x = opponentPieces.get(0).x + (isPlayer1? 1 : -1) * diameter_piece;
+				double stop_y = opponentPieces.get(0).y;
+				Point stopPosition = new Point(stop_x, stop_y);
+				//System.out.println("New position: " + stop_x + ", " + stop_y);
+				Pair<Integer, Point> m1 = Utilities.getNextMove(oldPosition, stopPosition, 0, playerPieces, opponentPieces);
+				Pair<Integer, Point> m2 = new Pair<Integer,Point>(0, stopPosition);
+				moves.add(m1);
+				moves.add(m2);
 				return moves;
 			}
 		}

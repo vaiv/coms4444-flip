@@ -3,6 +3,7 @@ package flip.g4;
 import java.util.Set;
 import java.util.List;
 import java.util.HashSet;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import javafx.util.Pair;
@@ -25,10 +26,13 @@ class WallStrategy{
     public Point[]   idealWallLocations;
 
     // Index of pieces that can build wall the fastest
-    private Integer[] fastestWallBuilders;
+    public Integer[] fastestWallBuilders;
 
     // Status flags for wall completion
     public boolean   WALL_COMPLETED;
+    public boolean   WALL_BREACHED;
+    public List<Integer> breachers;
+
     // private Integer[] movesLeft;
     public Integer   totalMovesLeft;
     public Integer   runner;
@@ -66,6 +70,8 @@ class WallStrategy{
         }
 
         // Log.log(Arrays.toString(tmp));
+        this.WALL_BREACHED = false;
+        this.breachers = new ArrayList<Integer>();
     }
 
     /**
@@ -169,7 +175,6 @@ class WallStrategy{
         int idx = 0;
         Integer[] idxPriority = this.getWallPriority(this.mPlayer.opponentPieces);
 
-        boolean flag = true;
         while (moves.size() < numMoves && idx < this.numWallPieces){
             Integer pieceID = idxPriority[idx];
 
@@ -190,10 +195,51 @@ class WallStrategy{
         }
 
         this.numMovesRequired += moves.size();
-        if (moves.size()==0) {
-            this.WALL_COMPLETED = true;
-            Log.log(String.format(
-                "WALL COMPLETED in %d moves", this.numMovesRequired));
+        if (moves.size() < numMoves) {
+            List<Integer> piecesLeft = new ArrayList<Integer>();
+            for(int i=0; i<11; i++){
+                if(!Board.almostEqual(
+                    Board.getdist(
+                        idealWallLocations[i],
+                        this.pieceStore.myPieces.get(this.fastestWallBuilders[i])
+                    ), 0))
+                    piecesLeft.add(i);
+            }
+
+            if (piecesLeft.size() == 0){
+                this.WALL_COMPLETED = true;
+                Log.log(String.format(
+                    "WALL COMPLETED in %d moves", this.numMovesRequired));
+            } else {
+                for (Integer oppPieceID: this.pieceStore.oppPieces.keySet()){
+                    Point loc = this.pieceStore.oppPieces.get(oppPieceID);
+
+                    if ((this.mPlayer.isPlayer1)? loc.x > 20.5: loc.x < -20.5){
+                        if (!breachers.contains(oppPieceID))
+                            breachers.add(oppPieceID);
+
+                        if(!this.WALL_BREACHED)
+                            Log.log("Detected wall breached");
+
+                        this.WALL_BREACHED = true;
+                    }
+                }
+
+                if (!this.WALL_BREACHED){
+                    if(piecesLeft.size() == 2){
+                        Integer idx1 = piecesLeft.get(0);
+                        Integer idx2 = piecesLeft.get(1);
+
+                        Integer tmp = this.fastestWallBuilders[idx1];
+                        this.fastestWallBuilders[idx1] = this.fastestWallBuilders[idx2];
+                        this.fastestWallBuilders[idx2] = tmp;
+                    } else {
+                        HashSet<Integer> runners = new HashSet<>();
+                        runners.add(this.runner);
+                        this.calculateWallStrategy(this.pieceStore.myPieces, runners);
+                    }
+                }
+            }
         }
     }
 }

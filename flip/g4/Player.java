@@ -1,4 +1,7 @@
-// 9/23 deliverable
+// this is the most up-to-date from me 9/24 4am
+// from CLONED VAIV at 6:25pm 9/23 (merge issue should be gone!!!!)
+// updated to have a more effective strat for n = 12 thru 15
+
 package flip.g4;
 
 import java.util.List;
@@ -45,6 +48,7 @@ public class Player implements flip.sim.Player
     public WallStrategy   mWallStrategy;
     public RunnerStrategy mRunnerStrategy;
     public AntiWallStrategy mAntiWallStrategy;
+    public PostWallStrategy mPostWallStrategy;
 
     public SmallNStrategy mSmallNStrategy;
     public SuperSmallNStrategy mSuperSmallNStrategy;
@@ -71,6 +75,7 @@ public class Player implements flip.sim.Player
         this.mWallStrategy     = new WallStrategy(this, pieces);
         this.mRunnerStrategy   = new RunnerStrategy(this, pieces, this.mWallStrategy.runner);
         this.mAntiWallStrategy = new AntiWallStrategy(this, pieces, this.mWallStrategy.runner);
+        this.mPostWallStrategy = null;
         
         this.mSmallNStrategy = new SmallNStrategy(this, pieces);
         this.mSuperSmallNStrategy = new SuperSmallNStrategy(this, pieces);
@@ -95,8 +100,30 @@ public class Player implements flip.sim.Player
             this.mSuperSmallNStrategy.getSuperSmallNMove(moves, numMoves);
         }
         
-        // Priority 2: N < 15
+        // Priority 2a: N < 12
+        else if (playerPieces.size() < 12) {
+            this.mSmallNStrategy.getSmallNMove(moves, numMoves);
+        }
+        
+        // Priority 2b: N <= 15
         else if (playerPieces.size() <= 15) {
+            this.mAntiWallStrategy.updateStatus();
+
+            // If wall is detected, send runner immediately to disrupt
+           if(this.mAntiWallStrategy.status == WallDetectionStatus.WALL_HOLE_DETECTED){
+                // Log.log("CALLED WALL_HOLE_DETECTED " + moves.toString());
+                this.mAntiWallStrategy.getAntiWallMove(moves, numMoves);
+                // Log.log("CALLED WALL_HOLE_DETECTED " + moves.toString());
+            }
+
+            // Runner needs to pass the wall first
+            if(this.mRunnerStrategy.status==RunnerStatus.RUNNER_SET)
+                this.mRunnerStrategy.getRunnerMove(moves, numMoves);
+
+            // Wall Strategy
+            if (!this.mWallStrategy.WALL_COMPLETED && !this.mWallStrategy.WALL_BREACHED)
+                this.mWallStrategy.getWallMove(moves, numMoves);
+            
             this.mSmallNStrategy.getSmallNMove(moves, numMoves);
         }
 
@@ -107,20 +134,40 @@ public class Player implements flip.sim.Player
 
             // If wall is detected, send runner immediately to disrupt
             if(this.mAntiWallStrategy.status == WallDetectionStatus.WALL_HOLE_DETECTED){
+                // Log.log("CALLED WALL_HOLE_DETECTED " + moves.toString());
                 this.mAntiWallStrategy.getAntiWallMove(moves, numMoves);
+                // Log.log("CALLED WALL_HOLE_DETECTED " + moves.toString());
             }
 
             // Runner needs to pass the wall first
-            if(this.mRunnerStrategy.status==RunnerStatus.RUNNER_SET)
+            if(this.mRunnerStrategy.status==RunnerStatus.RUNNER_SET){
+                // Log.log("CALLED RUNNER_SET " + moves.toString());
                 this.mRunnerStrategy.getRunnerMove(moves, numMoves);
+                // Log.log("CALLED RUNNER_SET " + moves.toString());
+            }
 
             // Wall Strategy
-            if (!this.mWallStrategy.WALL_COMPLETED)
+            if (!this.mWallStrategy.WALL_COMPLETED){
+                // Log.log("CALLED WALL_COMPLETED " + moves.toString());
                 this.mWallStrategy.getWallMove(moves, numMoves);
+                // Log.log("CALLED WALL_COMPLETED " + moves.toString());
+            }
 
             // Post wall runner strategy: FIRST RUNNER RUNS
-            if(this.mRunnerStrategy.status==RunnerStatus.RUNNER_PASSED_WALL)
+            if(this.mRunnerStrategy.status==RunnerStatus.RUNNER_PASSED_WALL){
+                // Log.log("CALLED RUNNER_PASSED_WALL " + moves.toString());
                 this.mRunnerStrategy.getRunnerMove(moves, numMoves);
+                // Log.log("CALLED RUNNER_PASSED_WALL " + moves.toString());
+            }
+
+            if(this.mWallStrategy.WALL_COMPLETED || this.mWallStrategy.WALL_BREACHED){
+                if(this.mPostWallStrategy == null)
+                    this.mPostWallStrategy = new PostWallStrategy(this, playerPieces);
+
+                // Log.log("CALLED WALL_BREACHED " + moves.toString());
+                this.mPostWallStrategy.getPostWallMove(moves, numMoves);                
+                // Log.log("CALLED WALL_BREACHED " + moves.toString());
+            }
 
         } catch (Exception e) {
             e.printStackTrace();

@@ -72,7 +72,12 @@ class AntiWallStrategy{
             Point loc = this.pieceStore.oppPieces.get(idx);
 
             // Make sure loc.x makes sense
-            //if(loc.x )
+            // Move has to be towards a viable wall location
+            if(isPlayer1){
+                if(loc.x < -21.5 || loc.x > -18) continue;
+            } else {
+                if(loc.x < 18 || loc.x > 21.5) continue;
+            }
 
             for(Integer idx2: this.pieceStore.oppPieces.keySet()){
                 if(this.checkWallPiece(loc, 
@@ -144,7 +149,7 @@ class AntiWallStrategy{
         List<Pair<Integer,Point>> moves, Integer numMoves){
         
         while(moves.size() < numMoves){
-            Pair<Integer, Point> move = Utilities.getNextMove(
+            Pair<Integer, Point> move = Utilities.getForwardishMove(
                 this.pieceStore.myPieces.get(this.runner),
                 this.targetBreach,
                 this.runner,
@@ -156,8 +161,10 @@ class AntiWallStrategy{
                 moves.add(move);
                 this.pieceStore.movePiece(move);
 
-                if(move.getValue().x == this.targetBreach.x){
+                if((this.isPlayer1) ? move.getValue().x < this.targetBreach.x : move.getValue().x > this.targetBreach.x)
+                {
                     this.status = WallDetectionStatus.WALL_BREACHED;
+                    break;
                 }
             } else{
                 break;
