@@ -16,60 +16,87 @@ import flip.sim.Log;
 
 public class Player implements flip.sim.Player
 {
-	private int seed = 42;
-	private Random random;
-	private boolean isplayer1;
-	private Integer n;
-	private Double diameter_piece;
+    private int seed = 42;
+    private Random random;
+    private boolean isplayer1;
+    private Integer n;
+    private Double diameter_piece;
     private int nPieceForWall = 11;
     private Wall wall;
-	public Player()
-	{
-		random = new Random(seed);
-	}
 
-	private double player1StoppingPoint = -15;
-	private double player2StoppingPoint = 15;
+    private List<Integer> oWallPieces;
+    private boolean oWall;
+    private boolean blocked;
+    private Integer blocker;
+    private boolean wallPredicted;
+    private double lastNum;
 
-	// Initialization function.
+    public Player()
+    {
+        random = new Random(seed);
+        oWallPieces = new ArrayList<Integer>();
+        oWall = false;
+        blocked = false;
+        blocker = -1;
+        wallPredicted = false;
+        lastNum = -59.5;
+    }
+
+    private double player1StoppingPoint = -30;
+    private double player2StoppingPoint = 30;
+
+    // Initialization function.
     // pieces: Location of the pieces for the player.
     // n: Number of pieces available.
     // t: Total turns available.
-	public void init(HashMap<Integer, Point> pieces, int n, double t, boolean isplayer1, double diameter_piece)
-	{
-		this.n = n;
-		this.isplayer1 = isplayer1;
-		this.diameter_piece = diameter_piece;
+    public void init(HashMap<Integer, Point> pieces, int n, double t, boolean isplayer1, double diameter_piece)
+    {
+        this.n = n;
+        this.isplayer1 = isplayer1;
+        this.diameter_piece = diameter_piece;
+    }
 
-        this.wall = new Wall(pieces, 11, isplayer1 ? 20.0 : -20.0);
-	}
-
-	public List<Pair<Integer, Point>> getMoves(Integer num_moves, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, boolean isplayer1)
-	{
+    public List<Pair<Integer, Point>> getMoves(Integer num_moves, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, boolean isplayer1)
+    {
         // Too few pieces, don't wall
         if (player_pieces.size() < this.nPieceForWall)
             return playGreedy(num_moves, player_pieces, opponent_pieces, isplayer1);
 
+        // TODO: what if the wall is breached and cannot complete??
         // TODO: deal with case where buildWall only returns 1 move
+        if(!blocked) return berlin(num_moves, player_pieces, opponent_pieces, isplayer1);
+
+        if (this.wall == null)
+            this.wall = new Wall(player_pieces, 11, isplayer1 ? 20.0 + (diameter_piece + 0.001) : -20.0 - (diameter_piece + 0.001));
+
         if (!this.wall.isBuilt())
-           return buildWall(num_moves, player_pieces, opponent_pieces, isplayer1);
+            return buildWall(num_moves, player_pieces, opponent_pieces, isplayer1);
 
         ArrayList<Integer> wallPieces = this.wall.getWallPieceIds();
         ArrayList<Integer> backPieces = new ArrayList<>();
         ArrayList<Integer> runnerPieces = new ArrayList<>();
+        ArrayList<Integer> finishedPieces = new ArrayList<>();
 
         List<Pair<Integer, Point>> output = new ArrayList<Pair<Integer, Point>> ();
         for (int i = 0; i < n; i++) {
-            if (!wallPieces.contains(i)) {
+            if (!wallPieces.contains(i) && !blocker.equals(Integer.valueOf(i))) {
                 if (isplayer1) {
                     if (player_pieces.get(i).x < this.wall.xPos) {
-                        runnerPieces.add(i);
+                        if(player_pieces.get(i).x < player_pieces.get(blocker).x) {
+                            finishedPieces.add(i);
+                        } else {
+                            runnerPieces.add(i);
+                        }
                     } else {
                         backPieces.add(i);
                     }
                 } else {
                     if (player_pieces.get(i).x > this.wall.xPos) {
-                        runnerPieces.add(i);
+                        if(player_pieces.get(i).x > player_pieces.get(blocker).x) {
+                            finishedPieces.add(i);
+                        } else {
+                            runnerPieces.add(i);
+                        }
                     } else {
                         backPieces.add(i);
                     }
@@ -77,28 +104,74 @@ public class Player implements flip.sim.Player
             }
         }
 
+        double minDist = Double.POSITIVE_INFINITY;
+        Integer minPiece =  new Integer(-1);
         Pair<Integer, Point> move;
-        for (Integer i : runnerPieces) {
-            if ((isplayer1 && player_pieces.get(i).x > player1StoppingPoint) || (!isplayer1 && player_pieces.get(i).x < player2StoppingPoint)) {
-                move = new Pair(i, greedyMove(i, player_pieces, opponent_pieces, isplayer1));
-                if (move != null) {
-                    player_pieces.put(i, move.getValue());
-                    output.add(move);
-                    if (output.size() == num_moves) {
-                        return output;
+        if(finishedPieces.size() > 0) {
+            double boundary = 50 - finishedPieces.size();
+            boundary = isplayer1 ? -1 * boundary : boundary;
+            for(Integer i : finishedPieces) {
+                if((isplayer1 && player_pieces.get(i).x > boundary) ||(!isplayer1 && player_pieces.get(i).x < boundary)) {
+                    while (output.size() < num_moves) {
+                        move = greedyMove(i, player_pieces, opponent_pieces, isplayer1);
+                        if (move == null) {
+                            break;
+                        }
+                        output.add(move);
                     }
                 }
             }
         }
+        if (runnerPieces.size() > 0) {
+            //prevent collision lock
+            ArrayList<Integer> runnersPastWall = new ArrayList<>();
+            //get closest runner to blocker
+            for (Integer i : runnerPieces) {
+                double dist = getDist(player_pieces.get(i), player_pieces.get(blocker));
+                if(dist < minDist) {
+                    minPiece = i;
+                    minDist = dist;
+                }
+            }
+            while (output.size() < num_moves) {
+                if (minDist < 2.05) {
+                    //Pieces are tangent
+                    if (num_moves - output.size() < 2) {
+                        return output;
+                    }
+                    Point oldPos = player_pieces.get(blocker);
+                    move = greedyMove(blocker, player_pieces, opponent_pieces, isplayer1);
+                    if (move == null) {
+                        break;
+                    }
+                    output.add(move);
+                    player_pieces.put(blocker, move.getValue());
+                    move = new Pair(minPiece, getMostDirectMove(oldPos, player_pieces.get(minPiece)));
+                    output.add(move);
+                    runnerPieces.remove(minPiece);
+                    blocker = minPiece;
+                }
+                else {
+                    Point dest = getIdealTangentMove(blocker, minPiece, player_pieces, opponent_pieces);
+                    move = new Pair(minPiece, dest);
+                    output.add(move);
+                    player_pieces.put(minPiece, dest);
+                }
+            }
+            return output;
+        }
 
-        int minPiece = -1;
-        double minDist = Double.POSITIVE_INFINITY;
-        int closestWallPiece = -1;
+        minPiece =  new Integer(-1);
+        minDist = Double.POSITIVE_INFINITY;
+        Integer closestWallPiece = new Integer(-1);
         if (backPieces.size() > 0) {
-
+            List<Integer> blockedWallPieces = new ArrayList<Integer>();
             while(output.size() < num_moves) {
                 for (Integer i : backPieces) {
                     for (Integer j : wallPieces) {
+                        if(blockedWallPieces.contains(j) || Math.abs(player_pieces.get(j).x) != 22.001 ) {
+                            continue;
+                        }
                         double dist = getDist(player_pieces.get(i), player_pieces.get(j));
                         if (dist < minDist) {
                             minPiece = i;
@@ -110,17 +183,20 @@ public class Player implements flip.sim.Player
                 if (minPiece == -1 || closestWallPiece == -1) {
                     return null;
                 }
-                if (minDist < 2.1) {
+                if (minDist < 2.05) {
                     //Pieces are tangent
-                    System.out.println("Min");
-                    if(num_moves - output.size() < 2) {
-                        System.out.println("AIJOSIEJ0");
-                        return null;
+                    if (num_moves - output.size() < 2) {
+                        return output;
                     }
                     Point oldPos = player_pieces.get(closestWallPiece);
                     move = greedyMove(closestWallPiece, player_pieces, opponent_pieces, isplayer1);
-
+                    if (move == null) {
+                        blockedWallPieces.add(closestWallPiece);
+                        continue;
+                    }
                     output.add(move);
+
+                    player_pieces.put(closestWallPiece, move.getValue());
 
                     move = new Pair(minPiece, getMostDirectMove(oldPos, player_pieces.get(minPiece)));
                     output.add(move);
@@ -131,7 +207,10 @@ public class Player implements flip.sim.Player
                     wallPieces.remove(minPiece);
                 }
                 else {
-                    output.add(new Pair(minPiece, getIdealTangentMove(closestWallPiece, minPiece, player_pieces, opponent_pieces)));
+                    Point dest = getIdealTangentMove(closestWallPiece, minPiece, player_pieces, opponent_pieces);
+                    move = new Pair(minPiece, dest);
+                    output.add(move);
+                    player_pieces.put(minPiece, dest);
                 }
             }
             return output;
@@ -139,7 +218,7 @@ public class Player implements flip.sim.Player
 
         return null;
         //return playGreedy(num_moves, player_pieces, opponent_pieces, isplayer1);
-	}
+    }
 
     private Pair<Integer, Point> greedyMove(Integer movingPiece, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, boolean isplayer1) {
         Point curr_position = player_pieces.get(movingPiece);
@@ -173,7 +252,7 @@ public class Player implements flip.sim.Player
             if(check_validity(move,	player_pieces, opponent_pieces)) {
                 return new Pair(movingPiece, new_position);
             }
-            theta += .1;
+            theta += .05;
         }
         return null;
     }
@@ -185,7 +264,15 @@ public class Player implements flip.sim.Player
         Point new_position = new Point(playerPieces.get(movingPiece));
         Pair<Integer, Point> move;
         Point mostDirectMove = getMostDirectMove(playerPieces.get(goalPiece), playerPieces.get(movingPiece));
-        if (dist % 2 < .1 && check_validity(new Pair<Integer, Point>(movingPiece,mostDirectMove), playerPieces, opponentPieces)) {
+        if (dist % 2 < .05 && check_validity(new Pair<Integer, Point>(movingPiece,mostDirectMove), playerPieces, opponentPieces)) {
+            Random rand = new Random();
+            int rand1 = rand.nextInt(15);
+            if(rand1 == 0) {
+                return getRandomBackMove(new Pair<Integer, Point>(movingPiece, playerPieces.get(movingPiece)), playerPieces, opponentPieces).getValue();
+            }
+            if(rand1 == 1) {
+                mostDirectMove.x = playerPieces.get(movingPiece).x + (playerPieces.get(movingPiece).x - mostDirectMove.x);
+            }
             return mostDirectMove;
         }
         //piece misaligned, move to align properly
@@ -202,9 +289,15 @@ public class Player implements flip.sim.Player
             new_position.y += delta_y1;
             move = new Pair<Integer, Point>(movingPiece, new_position);
             dist = getDist(new_position, playerPieces.get(goalPiece));
-            if(dist % 2 < .1) {
+            if(dist % 2 < .05) {
                 if(check_validity(move,	playerPieces, opponentPieces)) {
+                    // Point oldPos = new Point(playerPieces.get(movingPiece));
+                    // playerPieces.put(movingPiece, new_position);
+                    // Point dir = getMostDirectMove(playerPieces.get(goalPiece), playerPieces.get(movingPiece));
+                    // if(check_validity(new Pair<Integer, Point>(movingPiece, dir), playerPieces, opponentPieces)) {
+                    //     playerPieces.put(movingPiece, oldPos);
                     return new_position;
+                    // }
                 }
             }
 
@@ -217,21 +310,71 @@ public class Player implements flip.sim.Player
             new_position.y += delta_y2;
             move = new Pair<Integer, Point>(movingPiece, new_position);
             dist = getDist(new_position, playerPieces.get(goalPiece));
-            if(dist % 2 < .1) {
+            if(dist % 2 < .05) {
                 if(check_validity(move,	playerPieces, opponentPieces)) {
+                    // Point oldPos = new Point(playerPieces.get(movingPiece));
+                    // playerPieces.put(movingPiece, new_position);
+                    // Point dir = getMostDirectMove(playerPieces.get(goalPiece), playerPieces.get(movingPiece));
+                    // if(check_validity(new Pair<Integer, Point>(movingPiece, dir), playerPieces, opponentPieces)) {
+                    //     playerPieces.put(movingPiece, oldPos);
                     return new_position;
+                    // }
                 }
             }
-            theta += .1;
+            theta += .05;
+        }
+
+        return backMove(movingPiece, playerPieces, opponentPieces, isplayer1);
+    }
+
+    private Point backMove(Integer movingPiece, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, boolean isplayer1) {
+        Point curr_position = player_pieces.get(movingPiece);
+        Point new_position = new Point(player_pieces.get(movingPiece));
+        Pair<Integer, Point> move;
+        double theta = Math.PI/2;
+        while (theta > -1 * Math.PI/2) {
+            new_position.x = curr_position.x;
+            new_position.y = curr_position.y;
+
+            //TODO: could create a table w/ these values to make runtime faster
+            double delta_x1 = diameter_piece * Math.cos(theta);
+            double delta_y1 = diameter_piece * Math.sin(theta);
+
+            new_position.x = isplayer1 ? new_position.x - delta_x1 : new_position.x + delta_x1;
+            new_position.y += delta_y1;
+            move = new Pair<Integer, Point>(movingPiece, new_position);
+
+            if(check_validity(move,	player_pieces, opponent_pieces)) {
+                return new_position;
+            }
+
+            //check same move reflected over x axis
+            new_position.x = curr_position.x;
+            new_position.y = curr_position.y;
+            double delta_x2 = diameter_piece * Math.cos(-1 * theta);
+            double delta_y2 = diameter_piece * Math.sin(-1 * theta);
+            new_position.x = isplayer1 ? new_position.x - delta_x2 : new_position.x + delta_x2;
+            new_position.y += delta_y2;
+            move = new Pair<Integer, Point>(movingPiece, new_position);
+            if(check_validity(move,	player_pieces, opponent_pieces)) {
+                return new_position;
+            }
+            theta -= .05;
         }
         return null;
     }
 
     private Point getMostDirectMove(Point goalPoint, Point currentPoint) {
-        double theta = Math.atan((goalPoint.x - currentPoint.x)	/ (goalPoint.y - currentPoint.y));
+        double theta = Math.atan((goalPoint.y - currentPoint.y) / (goalPoint.x - currentPoint.x));
         Point move = new Point(currentPoint);
-        move.x = currentPoint.x + 2*diameter_piece * Math.cos(theta);
-        move.y = currentPoint.y + 2 * diameter_piece * Math.sin(theta);
+        if(goalPoint.x > currentPoint.x) {
+            move.x = currentPoint.x + 2* Math.cos(theta);
+            move.y = currentPoint.y + 2 * Math.sin(theta);
+        } else {
+            move.x = currentPoint.x - 2 * Math.cos(theta);
+            move.y = currentPoint.y - 2 * Math.sin(theta);
+        }
+//        System.out.println(getDist(move, currentPoint));
         //whoooo knows if this works
         return move;
     }
@@ -249,6 +392,7 @@ public class Player implements flip.sim.Player
         Pair<Integer, Point> move;
 
         for (int i = 0; i < num_moves; i++) {
+            if (this.wall.isBuilt()) break;
             move = this.wall.buildAndGetMove(player_pieces, opponent_pieces);
             moves.add(move);
             player_pieces.put(move.getKey(), move.getValue());
@@ -259,7 +403,7 @@ public class Player implements flip.sim.Player
 
     private List<Pair<Integer, Point>> playGreedy(Integer num_moves, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, boolean isplayer)
     {
-		List<Pair<Integer, Point>> moves = new ArrayList<Pair<Integer, Point>>();
+        List<Pair<Integer, Point>> moves = new ArrayList<Pair<Integer, Point>>();
 
         double theta = 0.0;
         while (moves.size() != num_moves)
@@ -276,7 +420,7 @@ public class Player implements flip.sim.Player
 
                 // No pieces can move with this theta, let's break and try a greater theta
                 if (new GoalDistanceComparator().getGoalDistance(sorted_pieces.get(0)) == Double.POSITIVE_INFINITY)
-                   break;
+                    break;
 
                 Integer piece_id = sorted_pieces.get(0).getKey();
 
@@ -289,41 +433,41 @@ public class Player implements flip.sim.Player
                 Pair<Integer, Point> move = new Pair<Integer, Point>(piece_id, new_pos);
 
                 if (check_validity(move, player_pieces, opponent_pieces)) {
-                   moves.add(move);
-                   player_pieces.put(move.getKey(), move.getValue());
-                   theta = 0.0;
-                   break;
-                 }
+                    moves.add(move);
+                    player_pieces.put(move.getKey(), move.getValue());
+                    theta = 0.0;
+                    break;
+                }
 
                 // Moving up didn't work, we'll try moving down
                 new_pos.y -= 2 * delta_y;
                 move = new Pair<Integer, Point>(piece_id, new_pos);
                 if (check_validity(move, player_pieces, opponent_pieces)) {
-                   moves.add(move);
-                   player_pieces.put(move.getKey(), move.getValue());
-                   theta = 0.0;
-                   break;
-               }
+                    moves.add(move);
+                    player_pieces.put(move.getKey(), move.getValue());
+                    theta = 0.0;
+                    break;
+                }
 
-               sorted_pieces.remove(0);
+                sorted_pieces.remove(0);
+            }
+
+            theta += Math.PI/600;
+
         }
 
-        theta += Math.PI/300;
-
-        }
-
-		 return moves;
+        return moves;
     }
 
-	private boolean check_validity(Pair<Integer, Point> move, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces)
+    private boolean check_validity(Pair<Integer, Point> move, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces)
     {
         boolean valid = true;
 
         // check if move is adjacent to previous position.
         if(!Board.almostEqual(Board.getdist(player_pieces.get(move.getKey()), move.getValue()), diameter_piece))
-            {
-                return false;
-            }
+        {
+            return false;
+        }
         // check for collisions
         valid = valid && !Board.check_collision(player_pieces, move);
         valid = valid && !Board.check_collision(opponent_pieces, move);
@@ -339,11 +483,11 @@ public class Player implements flip.sim.Player
         public Double getGoalDistance(Pair<Integer, Point> piece)
         {
             if (isplayer1) {
-                Double d = piece.getValue().x - (-28.0);
+                Double d = piece.getValue().x - (-22.0);
                 if (d <= 0) d = Double.POSITIVE_INFINITY;
                 return d;
             } else {
-                Double d = 29.0 - piece.getValue().x;
+                Double d = 22.0 - piece.getValue().x;
                 if (d <= 0) d = Double.POSITIVE_INFINITY;
 
                 return d;
@@ -447,7 +591,6 @@ public class Player implements flip.sim.Player
             nAttempts++;
         }
 
-        System.out.println("Moving back randomly to get unstuck");
 
         return move;
     }
@@ -461,10 +604,9 @@ public class Player implements flip.sim.Player
         Pair<Integer, Point> move;
 
         // If the dist to dst is >= 2 piece widths or is exactly 1 width just move towards dst in a straight line
-        if (l2norm(piece, dst) >= 2 * diameter_piece || Math.abs(l2norm(piece, dst) - diameter_piece) < 0.001) {
+        if (l2norm(piece, dst) >= 2 * diameter_piece || Math.abs(l2norm(piece, dst) - diameter_piece) < 0.0000001) {
             move = getDirectMove(piece, dst);
             if (check_validity(move, player_pieces, opponent_pieces)) {
-                System.out.println("Moving directly");
                 return move;
             } else {
                 move = getRandomBackMove(piece, player_pieces, opponent_pieces);
@@ -473,16 +615,12 @@ public class Player implements flip.sim.Player
         }
 
         // We'll move s.t. piece is exactly diameter_piece away from dst so next move will get it there
-        System.out.println("Moving at an angle");
 
         Point piecePos = piece.getValue();
         // Angle between piece and dst
         double alpha = Math.atan2(dst.y-piecePos.y, dst.x-piecePos.x);
-        System.out.println("alpha = " + Double.toString(Math.toDegrees(alpha)));
         // If we draw an isoceles triangle with the equal sides = diameter_piece, beta is the value of the base angles
-        System.out.println(l2norm(piecePos, dst)/2);
         double beta = Math.acos((l2norm(piecePos, dst)/2) / diameter_piece);
-        System.out.println("beta = " + Double.toString(Math.toDegrees(beta)));
 
         // alpha + beta and alpha - beta corresponds to drawing the lower/upper isoceles triangles for player1/2 respectively
         double theta = alpha + beta;
@@ -514,26 +652,22 @@ public class Player implements flip.sim.Player
         Pair<Integer, Point> move;
 
         // If the dist to dst is >= 2 piece widths or is exactly 1 width just move towards dst in a straight line
-        if (l2norm(piece, dst) >= 2 * diameter_piece || Math.abs(l2norm(piece, dst) - diameter_piece) < 0.001) {
+        if (l2norm(piece, dst) >= 2 * diameter_piece || Math.abs(l2norm(piece, dst) - diameter_piece) < 0.0000001) {
             move = getDirectMove(piece, dst);
             if (check_validity(move, player_pieces, opponent_pieces)) {
-                System.out.println("Moving directly");
                 return move;
             }
         }
 
         // We'll move s.t. piece is exactly diameter_piece away from dst so next 2 direct moves will get it there
-        System.out.println("Moving backwards at an angle");
         Point piecePos = piece.getValue();
         // Angle between piece and dst
         double alpha = Math.atan2(dst.y-piecePos.y, dst.x-piecePos.x);
-        System.out.println("alpha = " + Double.toString(Math.toDegrees(alpha)));
 
         // We're drawing a triangle with sides diameter_piece, 2 * diameter_piece and l2norm(piece, dst)
         // beta is the angle opposite to the side with length 2 * diameter_piece computed w/ law of cosines
         double beta = Math.acos((diameter_piece*diameter_piece + l2norm(piece, dst)*l2norm(piece, dst) -
-            (2*diameter_piece)*(2*diameter_piece)) / (2 * diameter_piece * l2norm(piece, dst)));
-        System.out.println("beta = " + Double.toString(Math.toDegrees(beta)));
+                (2*diameter_piece)*(2*diameter_piece)) / (2 * diameter_piece * l2norm(piece, dst)));
 
         double theta = alpha + beta;
         double delta_x = diameter_piece * Math.cos(theta);
@@ -556,6 +690,326 @@ public class Player implements flip.sim.Player
         return move;
     }
 
+    //*******************************************
+    public List<Pair<Integer, Point>> berlin(Integer num_moves, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, boolean isplayer1)
+    {
+        List<Pair<Integer, Point>> output = new ArrayList<Pair<Integer, Point>> ();
+
+        int[][] density = getDensity(player_pieces, opponent_pieces, 120, 11);
+        //printArray(density);
+        //System.out.println();
+
+        oWall = checkWall(density, opponent_pieces);
+
+        if(!oWall && !blocked) {
+            int xVal = predictedWall(density, opponent_pieces);
+            int hole = getHole(density, xVal);
+            //System.out.println("Hole: " + hole);
+            Pair<Integer, Point> temp = getBlockMove(num_moves, player_pieces, opponent_pieces, getTargetX(xVal, opponent_pieces), hole);
+            output.add(temp);
+            player_pieces.put(temp.getKey(), temp.getValue());
+            if(!blocked) {
+                output.add(getBlockMove(num_moves, player_pieces, opponent_pieces, getTargetX(xVal, opponent_pieces), hole));
+                return output;
+            }
+        }
+
+        if(oWall) {
+            return output;
+        }
+
+        return output;
+    }
+
+    private Point getDirectMove(Point dst, Point piece)
+    {
+        Point piecePos = piece;
+
+        double theta = Math.atan2(dst.y-piecePos.y, dst.x-piecePos.x);
+        double delta_x = diameter_piece * Math.cos(theta);
+        double delta_y = diameter_piece * Math.sin(theta);
+        Point newPos = new Point(piecePos.x + delta_x, piecePos.y + delta_y);
+
+        return newPos;
+    }
+
+    private Pair<Integer, Point> getBlockMove(Integer num_moves, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, double x, int hole)
+    {
+        if(!wallPredicted) {
+            return playBerlinGreedy(num_moves, player_pieces, opponent_pieces, isplayer1);
+        }
+
+        if(x > 27 || x < -27) {
+            x = lastNum;
+        }
+
+        double y = -17.27 + hole * (40.0 / 11.0);
+        Point ideal = new Point(x, y);
+
+        Point minPoint = player_pieces.get(0);
+        int index = 0;
+        Point temp = player_pieces.get(0);
+        double currDist = getDist(ideal, temp);
+        double minDist = currDist;
+
+        for(int i = 1; i < player_pieces.size(); i++) {
+            temp = player_pieces.get(i);
+            currDist = getDist(ideal, temp);
+            //System.out.println(i + ": " + currDist);
+            if(currDist < minDist) {
+                minDist = currDist;
+                minPoint = temp;
+                index = i;
+            }
+        }
+
+        //System.out.println(index + ": " + minDist);
+
+        //System.out.println("index: " + index + " X: " + minPoint.x + " Y: " + minPoint.y);
+        Point output = getDirectMove(ideal, minPoint);
+        //System.out.println("output -- " + "X: " + output.x + " Y: " + output.y);
+
+        Pair out = new Pair(index, output);
+        boolean valid = check_validity(out, player_pieces, opponent_pieces);
+
+        if(valid) {
+            //System.out.println("Valid");
+            if(output.x >= x-.5 && output.x <= x + .5) {
+                blocked = true;
+                blocker = index;
+            }
+            return out;
+        }
+
+        //else System.out.println("Invalid");*/
+
+        return playBerlinGreedy(num_moves, player_pieces, opponent_pieces, isplayer1);
+    }
+
+    private void printArray(int[][] temp) {
+        for(int i = 0; i < temp.length; i++) {
+            System.out.print("[");
+            for(int j = 37; j < 83; j++) {
+                System.out.print(" " + temp[i][j] + " ");
+            }
+            System.out.println("]");
+        }
+    }
+
+    private double getTargetX(int i, HashMap<Integer, Point> opponent_pieces) {
+        double xMin = (double) (i) * (120.0 / 120.0) - 60.0;
+        //double xMax = (double) (i + 1) * (120.0 / 120.0) - 60.0;
+
+        if(!isplayer1) {
+            xMin = (double) 60.0 - (120 - i) * (120.0 / 120.0);
+            //xMax = (double) (120.0 - i + 1) * (120.0 / 120.0) - 60.0;
+        }
+
+        Point temp;
+
+        for(int j = 0; j < opponent_pieces.size(); j++) {
+            temp = opponent_pieces.get(j);
+            if(temp.x >= xMin && temp.x <= xMin + 1) {
+                //System.out.println("YOOOOOO");
+                if(isplayer1) {
+                    if(temp.x > -27 && temp.x < 27) lastNum = temp.x - .5;
+                    return temp.x - .5;
+                }
+                if(temp.x > -27 && temp.x < 27) lastNum = temp.x + .5;
+                return temp.x + .5;
+                //return temp.x;
+            }
+        }
+        if(isplayer1) {
+            if(xMin > -27 && xMin < 27) lastNum = xMin - .5;
+            return xMin - .5;
+        }
+        if(xMin > -27 && xMin < 27) lastNum = xMin + .5;
+        return xMin + .5;
+        //return xMin;
+    }
+
+    private boolean checkWall(int[][] matrix, HashMap<Integer, Point> opponent_pieces) {
+
+        boolean check;
+
+        for(int i = 37 ; i <= 83; i++) {
+            check = true;
+            for(int j = 0; j < 11; j++) {
+                if(matrix[j][i] == 0) check = false;
+            }
+            if(check) {
+                double xMin = (double) (i) * (120.0 / 120.0) - 60.0;
+                double xMax = (double) (i + 1) * (120.0 / 120.0) - 60.0;
+
+                if(!isplayer1) {
+                    xMin = (double) (60.0 - i) * (120.0 / 120.0) - 60.0;
+                    xMax = (double) (60.0 - i + 1) * (120.0 / 120.0) - 60.0;
+                }
+
+                //System.out.println("xMin: " + xMin + " xMax: " + xMax);
+
+                for(int j = 0; j < opponent_pieces.size(); j++) {
+                    Point temp = opponent_pieces.get(j);
+                    if(temp.x >= xMin && temp.x <= xMax) {
+                        oWallPieces.add(j);
+                    }
+                }
+                List<Double> yVal = new ArrayList<Double>();
+                for(int j: oWallPieces) {
+                    yVal.add(opponent_pieces.get(j).y);
+                }
+
+                Collections.sort(yVal);
+                //for(double j: yVal) System.out.println(j);
+
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private int getHole(int[][] matrix, int x) {
+        int start = 0;
+        int end = 0;
+        int temp = 0;
+        int maxLength = -1;
+        int counter = 0;
+
+        for(int i = 0; i < matrix.length; i++) {
+            if(matrix[i][x] == 0) counter++;
+            else {
+                if(counter > maxLength) {
+                    maxLength = counter;
+                    end = i - 1;
+                    start = end - counter + 1;
+                }
+                counter = 0;
+            }
+        }
+
+        //System.out.println("start: " + start + " end: " + end + " x: " + x);
+        return (start + end)/2;
+    }
+
+    private int predictedWall(int[][] matrix, HashMap<Integer,Point> opponent_pieces) {
+        int index = 0;
+        int maxCount = 0;
+        for(int i = 37 ; i <= 83; i++) {
+            int count = 0;
+            for(int j = 0; j < 11; j++) {
+                if(matrix[j][i] >= 1) count++;
+            }
+            if(count > maxCount && count > 1) {
+                index = i;
+                maxCount = count;
+                wallPredicted = true;
+            }
+        }
+        return index;
+    }
+
+    private int[][] getDensity(HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, int x, int y) {
+        int[][] output = new int[y][x];
+        Point pTemp;
+        Point oTemp;
+        int px;
+        int py;
+        int ox;
+        int oy;
+
+        for(int i = 0; i < player_pieces.size(); i++) {
+            //pTemp = player_pieces.get(i);
+            oTemp = opponent_pieces.get(i);
+            //px = ((int) Math.round(pTemp.x) + 60) / (120 / x);
+            //py = ((int) Math.round(pTemp.y) + 20) / (40 / y);
+            //px = (int)((pTemp.x + 60.0) / (120.0 / (double) x));
+            //py = (int)((pTemp.y + 20.0) / (40.0 / (double) y));
+            //System.out.println(px + " " + py);
+
+            //ox = ((int) Math.round(oTemp.x) + 60) / (120 / x);
+            //oy = ((int) Math.round(oTemp.y) + 20) / (40.0 / y);
+            ox = (int)((oTemp.x + 60.0) / (120.0 / (double) x));
+            oy = (int)((oTemp.y + 20.0) / (40.0 / (double) y));
+            //output[py][px]++;
+            output[oy][ox]++;
+        }
+
+        return output;
+    }
+
+    private Pair<Integer, Point> playBerlinGreedy(Integer num_moves, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, boolean isplayer)
+    {
+        double theta = 0.0;
+        // Sort pieces according to shortest distance from goal
+        List<Pair<Integer, Point>> sorted_pieces = sortPieces(player_pieces, new GoalDistanceComparator());
+
+        while (true)
+        {
+            double delta_x = diameter_piece * Math.cos(theta);
+            double delta_y = diameter_piece * Math.sin(theta);
+
+            double pos = sorted_pieces.get(0).getValue().x;
+
+            // No pieces can move with this theta, let's break and try a greater theta
+            if (new GoalDistanceComparator().getGoalDistance(sorted_pieces.get(0)) == Double.POSITIVE_INFINITY)
+                break;
+
+            Integer piece_id = sorted_pieces.get(0).getKey();
+
+            Point curr_pos = player_pieces.get(piece_id);
+
+            Point new_pos = new Point(curr_pos);
+            new_pos.x += isplayer1 ? -delta_x : delta_x;
+            new_pos.y += delta_y;
+
+            Pair<Integer, Point> move = new Pair<Integer, Point>(piece_id, new_pos);
+
+            if (check_validity(move, player_pieces, opponent_pieces)) {
+                if(isplayer1) {
+                    if(move.getValue().x < -22) {
+                        blocked = true;
+                        blocker = sorted_pieces.get(0).getKey();
+                    }
+                }
+                else {
+                    if(move.getValue().x > 22) {
+                        blocked = true;
+                        blocker = sorted_pieces.get(0).getKey();
+                    }
+                }
+
+                player_pieces.put(move.getKey(), move.getValue());
+                theta = 0.0;
+                return move;
+            }
+
+            // Moving up didn't work, we'll try moving down
+            new_pos.y -= 2 * delta_y;
+            move = new Pair<Integer, Point>(piece_id, new_pos);
+            if (check_validity(move, player_pieces, opponent_pieces)) {
+                if(isplayer1) {
+                    if(move.getValue().x < -22) {
+                        blocked = true;
+                        blocker = sorted_pieces.get(0).getKey();
+                    }
+                }
+                else {
+                    if(move.getValue().x > 22) {
+                        blocked = true;
+                        blocker = sorted_pieces.get(0).getKey();
+                    }
+                }
+                player_pieces.put(move.getKey(), move.getValue());
+                theta = 0.0;
+                return move;
+            }
+            theta += Math.PI/300;
+        }
+        return null;
+    }
+    // ***************************************************************8
     private class Wall
     {
         private class Brick
@@ -569,6 +1023,7 @@ public class Player implements flip.sim.Player
             public Pair<Integer, Point> getPiece() { return this.piece; }
             public boolean hasPiece() { return (this.piece != null); }
             public boolean isPieceInPlace() { return this.pieceInPlace; }
+            public void updateIdealPos(Point newIdealPos) { this.idealPos = newIdealPos; }
 
             // Assign a piece to a brick without a piece
             public void assignPiece(Pair<Integer, Point> piece) { this.piece = piece; }
@@ -579,9 +1034,8 @@ public class Player implements flip.sim.Player
                 this.assignPiece(piece);
 
                 // If the euclidean distance b/t the piece and the ideal brick position <= 0.001 it's in place
-                if (l2norm(this.piece, this.idealPos) <= 0.001) {
+                if (l2norm(this.piece, this.idealPos) <= 0.0000001) {
                     this.pieceInPlace = true;
-                    System.out.println(this.piece + " is now in place");
                 }
             }
 
@@ -594,7 +1048,7 @@ public class Player implements flip.sim.Player
                     piece = "Piece: (null)";
                 else
                     piece = "Piece: " + this.piece.getKey() + " @ (" + Double.toString(this.piece.getValue().x) + ", " +
-                        Double.toString(this.piece.getValue().y) + ")";
+                            Double.toString(this.piece.getValue().y) + ")";
 
                 return ideal + piece;
             }
@@ -611,7 +1065,6 @@ public class Player implements flip.sim.Player
 
         public Wall(HashMap<Integer, Point> player_pieces, int nBricks, Double xPos)
         {
-            System.out.println("in Wall constructor");
 
             this.nBricks = nBricks;
             this.xPos = xPos;
@@ -659,8 +1112,6 @@ public class Player implements flip.sim.Player
                 unassignedPieces.remove(closestPiece);
             }
 
-            System.out.println(this);
-            System.out.println("exiting Wall constructor");
         }
 
         public ArrayList<Integer> getWallPieceIds() {
@@ -670,6 +1121,7 @@ public class Player implements flip.sim.Player
             }
             return out;
         }
+
         public void changeBrick(Integer currentVal, Pair<Integer, Point> newBrick) {
             for(Brick brick : this.bricks) {
                 if(brick.getPiece().getKey() == currentVal) {
@@ -696,6 +1148,40 @@ public class Player implements flip.sim.Player
          */
         public Pair<Integer, Point> buildAndGetMove(HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces)
         {
+            if (this.isBuilt) return null;
+
+            // Check if any opponent pieces are blocking the ideal pos of any brick
+            for (Brick brick : this.bricks) {
+                Point idealPos = brick.getIdealPos();
+                for (Map.Entry<Integer, Point> entry : opponent_pieces.entrySet()) {
+                    Point pos = entry.getValue();
+                    // Opponent piece blocking; we've been breached!
+                    if (l2norm(idealPos, pos) < 2.0)
+                        // Fix the wall by moving this brick piece back
+                        brick.updateIdealPos(new Point(pos.x + (isplayer1 ? 2.0 : -2.0), idealPos.y));
+                }
+            }
+/*
+            // Check if any previously breached piece is no longer blocked
+            for (Brick brick : this.bricks) {
+                if (Math.abs(brick.getIdealPos().x) == 22.001) continue;
+
+                Point idealPos = brick.getIdealPos();
+                boolean stillBlocked = false;
+                for (Map.Entry<Integer, Point> entry : opponent_pieces.entrySet()) {
+                    Point pos = entry.getValue();
+                    // Opponent piece blocking; we've been breached!
+                    if (l2norm(idealPos, pos) < 2.0) {
+                        stillBlocked = true;
+                        break;
+                    }
+                }
+
+                if (!stillBlocked)
+                    brick.updateIdealPos(new Point(idealPos.x + (isplayer1 ? -2.0 : 2.0), idealPos.y));
+            }
+*/
+
             // Find closest opponent piece to any ideal brick pos that needs filling, we build that first
             List<Brick> bricksNeedingFill = new LinkedList<Brick>();
             for (Brick brick : this.bricks)
@@ -716,17 +1202,14 @@ public class Player implements flip.sim.Player
                     }
                 }
 
-                System.out.println(bricksNeedingFill.size());
 
                 bricksNeedingFill.remove(toBuild);
 
                 // Move the piece associated with brick toBuild towards ideal position
-                System.out.println("Moving " + toBuild.getPiece() + " to " + toBuild.getIdealPos());
-                System.out.println("Distance is: " + l2norm(toBuild.getPiece(), toBuild.getIdealPos()));
 
                 move = getExactMove(toBuild.getPiece(), toBuild.getIdealPos(), player_pieces, opponent_pieces);
 
-            // If this move is invalid, we'll look for the next best move
+                // If this move is invalid, we'll look for the next best move
             } while ((!check_validity(move, player_pieces, opponent_pieces)) && (bricksNeedingFill.size() != 0));
 
             // TODO: refactor; combine getExactMoveWithBack() with getExactMove()?
@@ -742,19 +1225,25 @@ public class Player implements flip.sim.Player
                 // TODO: what if this returns invalid too, e.g. the piece is surrounded?
                 move = getRandomBackMove(toBuild.getPiece(), player_pieces, opponent_pieces);
 
+            // Unstuck also failed??
             toBuild.updatePiece(move);
 
-            // If all pieces in place the wall is built
+            // If all pieces in place the wall are built
             boolean allInPlace = true;
             for (Brick brick : this.bricks)
-                if (!brick.isPieceInPlace()) allInPlace = false;
+                if (!brick.isPieceInPlace()) {
+                    allInPlace = false;
+                    break;
+                }
             this.isBuilt = allInPlace;
+
+            if (this.isBuilt) {
+            }
 
             return move;
         }
 
         public boolean isBuilt() { return this.isBuilt; }
     }
-
 
 }
