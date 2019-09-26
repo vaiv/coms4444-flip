@@ -12,48 +12,61 @@ import flip.sim.Point;
 import javafx.util.Pair;
 
 public abstract class Move {
-		
-	public abstract boolean isPossible(); // Returns if any of the coins selected for a strategy can perform that strategy
+	
 	public abstract Pair<Integer, Point> getMove(); // Returns normal move for the specific strategy
-	public abstract Pair<Integer, Point> getHybridMove(); // Returns move for a different strategy
 	
 	enum Approach {
 		AGGRESSIVE, AVOIDANCE, CREATION;
 	}	
 	
-	public boolean checkValidity(Pair<Integer, Point> move, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, Double diameter_piece) {
+	/**
+	 * Checks the validity of a coin's  move
+	 * @param move: New move made by the coin
+	 * @param playerPieces: All player pieces
+	 * @param opponentPieces: All opponent pieces
+	 * @param diameterPiece: Diameter of each piece
+	 * @return boolean to test move validity
+	 */
+	public boolean checkValidity(Pair<Integer, Point> move, HashMap<Integer, Point> playerPieces, HashMap<Integer, Point> opponentPieces, Double diameterPiece) {
 		boolean valid = true;
 
-		// check if move is adjacent to previous position.
-		if(!Board.almostEqual(Board.getdist(player_pieces.get(move.getKey()), move.getValue()), diameter_piece))
+		// Check if move is adjacent to previous position.
+		if(!Board.almostEqual(Board.getdist(playerPieces.get(move.getKey()), move.getValue()), diameterPiece))
 		{
 			return false;
 		}
-		// check for collisions
-		valid = valid && !Board.check_collision(player_pieces, move);
-		valid = valid && !Board.check_collision(opponent_pieces, move);
+		// Check for collisions
+		valid = valid && !Board.check_collision(playerPieces, move);
+		valid = valid && !Board.check_collision(opponentPieces, move);
 
-		// check within bounds
+		// Check within bounds
 		valid = valid && Board.check_within_bounds(move);
 		return valid;
 
 	}
-		
-	public HashMap<Integer, Point> getClosestPointsToOpponentBoundary(int numPoints, HashMap<Integer, Point> pieces, boolean isPlayer1) {
+	
+	/**
+	 * Get n closest points to opponent boundary
+	 * @param numPoints: Required closest points
+	 * @param playerPieces: Player pieces
+	 * @param isPlayer1: Flag to check if player is player one or not
+	 * @return n closest points
+	 */
+	public HashMap<Integer, Point> getClosestPointsToOpponentBoundary(int numPoints, HashMap<Integer, Point> playerPieces, boolean isPlayer1) {
 		HashMap<Integer, Point> closest_pieces = new HashMap<>();
 		HashMap<Integer, Point> sorted_pieces = new HashMap<>();
-		for(Integer key : pieces.keySet())
-			sorted_pieces.put(key, pieces.get(key));
+		for(Integer key : playerPieces.keySet())
+			sorted_pieces.put(key, playerPieces.get(key));
 		Object[] sorted_pieces_array = sorted_pieces.entrySet().toArray();
 		if(isPlayer1) {
-			Arrays.sort(sorted_pieces_array, new Comparator() {
+			Arrays.sort(sorted_pieces_array, new Comparator<Object>() {
 			    public int compare(Object o1, Object o2) {
 			        return ((Double) (((Map.Entry<Integer, Point>) o1).getValue().x)).compareTo((Double) (((Map.Entry<Integer, Point>) o2).getValue().x));
 			    }
 			});			
 		}
 		else {
-			Arrays.sort(sorted_pieces_array, new Comparator() {
+			Arrays.sort(sorted_pieces_array, new Comparator<Object>() {
 			    public int compare(Object o1, Object o2) {
 			        return ((Double) (((Map.Entry<Integer, Point>) o2).getValue().x)).compareTo((Double) (((Map.Entry<Integer, Point>) o1).getValue().x));
 			    }
@@ -67,24 +80,27 @@ public abstract class Move {
 		
 		return closest_pieces;
 	}
-	
-	public Pair<Integer, Point> getClosestOpponent(Pair<Integer, Point> player_piece, HashMap<Integer, Point> opponent_pieces, boolean isPlayer1) {
-		return null;
-	}
-	
-	public HashMap<Integer, Point> getUnfinishedPlayerPieces(HashMap<Integer, Point> player_pieces, boolean isplayer1, Approach approach) {
-		HashMap<Integer, Point> unfinished_player_pieces = new HashMap<>();
+
+	/**
+	 * Get n closest points to opponent boundary
+	 * @param playerPieces: Player pieces
+	 * @param isplayer1: Flag to check if player is player one or not
+	 * @param approach: Approach taken by the player
+	 * @return
+	 */
+	public HashMap<Integer, Point> getUnfinishedPlayerPieces(HashMap<Integer, Point> playerPieces, boolean isplayer1, Approach approach) {
+		HashMap<Integer, Point> unfinishedPlayerPieces = new HashMap<>();
 		
 		switch(approach) {
 			case AGGRESSIVE: {
-				double maxInteriorDistance = player_pieces.size() / 10 + 3;
-				for(Integer i : player_pieces.keySet()) {			
-					Point curr_position = player_pieces.get(i);
-				 	if((isplayer1 && curr_position.x < -(20 + maxInteriorDistance)) || (!isplayer1 && curr_position.x > (20 + maxInteriorDistance)))
+				double maxInteriorDistance = playerPieces.size() / 10 + 1.5;
+				for(Integer i : playerPieces.keySet()) {			
+					Point currPosition = playerPieces.get(i);
+				 	if((isplayer1 && currPosition.x < -(20 + maxInteriorDistance)) || (!isplayer1 && currPosition.x > (20 + maxInteriorDistance)))
 				 		continue;
-				 	unfinished_player_pieces.put(i, curr_position);
+				 	unfinishedPlayerPieces.put(i, currPosition);
 				}
-				return unfinished_player_pieces;
+				return unfinishedPlayerPieces;
 			}
 			case AVOIDANCE: {
 				return null;
@@ -98,18 +114,23 @@ public abstract class Move {
 					maxInteriorDistance = -21;
 				}
 
-				for(Integer i : player_pieces.keySet()) {
-					Point curr_position = player_pieces.get(i);
-					if((isplayer1 && curr_position.x < maxInteriorDistance) || (!isplayer1 && curr_position.x > maxInteriorDistance))
+				for(Integer i : playerPieces.keySet()) {
+					Point currPosition = playerPieces.get(i);
+					if((isplayer1 && currPosition.x < maxInteriorDistance) || (!isplayer1 && currPosition.x > maxInteriorDistance))
 						continue;
-					unfinished_player_pieces.put(i, curr_position);
+					unfinishedPlayerPieces.put(i, currPosition);
 				}
-				return unfinished_player_pieces;				
+				return unfinishedPlayerPieces;				
 			}
 			default: return null;
 		}
 	}
 	
-	public abstract void updatePieceInfo(HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces);
+	/**
+	 * Updates the pieces
+	 * @param playerPieces: Player pieces
+	 * @param opponentPieces: All opponent pieces
+	 */
+	public abstract void updatePieceInfo(HashMap<Integer, Point> playerPieces, HashMap<Integer, Point> opponentPieces);
 
 }

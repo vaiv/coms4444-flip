@@ -2,103 +2,98 @@ package flip.g6;
 
 import java.util.HashMap;
 import java.util.Random;
-
-import flip.sim.Board;
 import flip.sim.Point;
 import javafx.util.Pair;
 
 public class ObstacleAvoidance extends Move {
 
-	private int seed = 42;
-	private HashMap<Integer, Point> player_pieces;
-	private HashMap<Integer, Point> opponent_pieces;
-	private boolean isplayer1;
+	private HashMap<Integer, Point> playerPieces;
+	private HashMap<Integer, Point> opponentPieces;
+	private boolean isPlayer1;
 	private Integer n;
-	private Double diameter_piece;
+	private Double diameterPiece;
 
-	public ObstacleAvoidance(HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, boolean isplayer1, Integer n, Double diameter_piece) {
-		this.player_pieces = player_pieces;
-		this.opponent_pieces = opponent_pieces;
-		this.isplayer1 = isplayer1;
+	/**
+	 * Constructor for obstacle avoidance strategy
+	 * @param playerPieces
+	 * @param opponentPieces
+	 * @param isPlayer1
+	 * @param n: Total coins
+	 * @param diameterPiece
+	 */
+	public ObstacleAvoidance(HashMap<Integer, Point> playerPieces, HashMap<Integer, Point> opponentPieces, boolean isPlayer1, Integer n, Double diameterPiece) {
+		this.playerPieces = playerPieces;
+		this.opponentPieces = opponentPieces;
+		this.isPlayer1 = isPlayer1;
 		this.n = n;
-		this.diameter_piece = diameter_piece;
+		this.diameterPiece = diameterPiece;
 	}
 
+	/**
+	 * Update piece info of pieces
+	 */
 	@Override
-	public void updatePieceInfo(HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces) {
-		this.player_pieces = player_pieces;
-		this.opponent_pieces = opponent_pieces;
-	}
-	
-	@Override
-	public boolean isPossible() {
-		return false; // TODO: Change this implementation
+	public void updatePieceInfo(HashMap<Integer, Point> playerPieces, HashMap<Integer, Point> opponentPieces) {
+		this.playerPieces = playerPieces;
+		this.opponentPieces = opponentPieces;
 	}
 
+	/**
+	 * Get moves for avoidance strategy
+	 */
 	@Override
 	public Pair<Integer, Point> getMove() {
 
-		Pair<Integer, Point> move = null; // TODO: Change this implementation
-
-		HashMap<Integer, Point> unfinished_pieces = getUnfinishedPlayerPieces(player_pieces, isplayer1, Approach.AVOIDANCE);
-		HashMap<Integer, Point> closest_pieces = getClosestPointsToOpponentBoundary(n / 2, unfinished_pieces, isplayer1);
-		HashMap<Integer, Point> relevant_pieces = (HashMap<Integer, Point>) player_pieces.clone();
-
-		for(Integer id : closest_pieces.keySet()) {
-			relevant_pieces.remove(id);
+		Pair<Integer, Point> move = null;
+		HashMap<Integer, Point> unfinishedPieces = getUnfinishedPlayerPieces(playerPieces, isPlayer1, Approach.AVOIDANCE);
+		HashMap<Integer, Point> closestPieces = getClosestPointsToOpponentBoundary(n / 2, unfinishedPieces, isPlayer1);
+		HashMap<Integer, Point> relevantPieces = (HashMap<Integer, Point>) playerPieces.clone();
+		
+		for(Integer id : closestPieces.keySet()) {
+			relevantPieces.remove(id);
 		}
 
 		Random random = new Random();
 		Integer piece_id = random.nextInt(n);
-		while(!relevant_pieces.containsKey(piece_id))
+		while(!relevantPieces.containsKey(piece_id))
 			piece_id = random.nextInt(n);
-		Point curr_position = player_pieces.get(piece_id);
-		Point new_position = new Point(curr_position);
+		Point currPosition = playerPieces.get(piece_id);
+		Point newPosition = new Point(currPosition);
 
-		Point opponentCentroid = getPlayerCentroid(opponent_pieces);
-		Point teamCentroid = getPlayerCentroid(player_pieces);
+		Point opponentCentroid = getPlayerCentroid(opponentPieces);
+		Point teamCentroid = getPlayerCentroid(playerPieces);
 		double angleBetweenPalyerCenteroids = 0;
-		if(player_pieces.size() > 5) {
+		if(playerPieces.size() > 5) {
 			angleBetweenPalyerCenteroids = getAngle(teamCentroid, opponentCentroid);
 		}
-		double maxInteriorDistance = player_pieces.size()/10 + 4;
-		double maxCentroidDistance = player_pieces.size()/10;
+		double maxInteriorDistance = playerPieces.size()/10 + 4;
+		double maxCentroidDistance = playerPieces.size()/10;
 
-		if((isplayer1 && curr_position.x < -(20 + maxInteriorDistance)) || (!isplayer1 && curr_position.x > (20 + maxInteriorDistance))) {
-			// Player 1
+		if((isPlayer1 && currPosition.x < -(20 + maxInteriorDistance)) || (!isPlayer1 && currPosition.x > (20 + maxInteriorDistance))) {
 			try {
 				return getMove();
 			} catch (Exception e) {
-				// TODO Auto-generated catch block
 				return null;
 			}
 		}
 
 		double theta = -Math.PI/2 + Math.PI * random.nextDouble();
-		double delta_x = 0;
-		double delta_y = 0;
-		if(Math.abs(opponentCentroid.x - teamCentroid.x) > maxCentroidDistance && (opponentCentroid.x > teamCentroid.x) && !isplayer1) {
-			delta_x = diameter_piece * Math.cos(angleBetweenPalyerCenteroids);
-			delta_y = diameter_piece * Math.sin(angleBetweenPalyerCenteroids);
-		}else if(Math.abs(opponentCentroid.x - teamCentroid.x) > maxCentroidDistance && opponentCentroid.x < teamCentroid.x && isplayer1) {
-			delta_x = diameter_piece * Math.cos(-angleBetweenPalyerCenteroids);
-			delta_y = diameter_piece * Math.sin(-angleBetweenPalyerCenteroids);
+		double deltaX = 0;
+		double deltaY = 0;
+		if(Math.abs(opponentCentroid.x - teamCentroid.x) > maxCentroidDistance && (opponentCentroid.x > teamCentroid.x) && !isPlayer1) {
+			deltaX = diameterPiece * Math.cos(angleBetweenPalyerCenteroids);
+			deltaY = diameterPiece * Math.sin(angleBetweenPalyerCenteroids);
+		}else if(Math.abs(opponentCentroid.x - teamCentroid.x) > maxCentroidDistance && opponentCentroid.x < teamCentroid.x && isPlayer1) {
+			deltaX = diameterPiece * Math.cos(-angleBetweenPalyerCenteroids);
+			deltaY = diameterPiece * Math.sin(-angleBetweenPalyerCenteroids);
 		}else {
-			delta_x = diameter_piece * Math.cos(theta);
-			delta_y = diameter_piece * Math.sin(theta);
+			deltaX = diameterPiece * Math.cos(theta);
+			deltaY = diameterPiece * Math.sin(theta);
 		}
 
-		Double val = (Math.pow(delta_x,2) + Math.pow(delta_y, 2));
-		// System.out.println("delta_x^2 + delta_y^2 = " + val.toString() + " theta values are " + Math.cos(theta) + " " + Math.sin(theta) + " diameter is " + diameter_piece);
-		// Log.record("delta_x^2 + delta_y^2 = " + val.toString() + " theta values are " + Math.cos(theta) + " " + Math.sin(theta) + " diameter is " + diameter_piece);
-
-		new_position.x = isplayer1 ? new_position.x - delta_x : new_position.x + delta_x;
-		new_position.y += delta_y;
-		move = new Pair<Integer, Point>(piece_id, new_position);
-
-		Double dist = Board.getdist(player_pieces.get(move.getKey()), move.getValue());
-		// System.out.println("distance from previous position is " + dist.toString());
-		// Log.record("distance from previous position is " + dist.toString());
+		newPosition.x = isPlayer1 ? newPosition.x - deltaX : newPosition.x + deltaX;
+		newPosition.y += deltaY;
+		move = new Pair<Integer, Point>(piece_id, newPosition);
 
 		return move;
 	}
@@ -132,11 +127,5 @@ public class ObstacleAvoidance extends Move {
 		}
 
 		return angle;
-	}
-
-	@Override
-	public Pair<Integer, Point> getHybridMove() {
-		Pair<Integer, Point> move = null; // TODO: Change this implementation
-		return move;
 	}
 }

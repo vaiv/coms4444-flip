@@ -1,139 +1,198 @@
 package flip.g6;
 import java.util.List;
-import java.util.Collections;
-import java.util.List;
 import java.util.Random;
 import java.util.HashMap;
 import javafx.util.Pair; 
 import java.util.ArrayList;
-import java.util.Arrays;
-
 import flip.sim.Point;
-import flip.sim.Board;
-import flip.sim.Log;
 
 public class Player implements flip.sim.Player
 {
 	private static final double THRESHOLD = 0.7;
 	private int seed = 42;
 	private Random random;
-	private boolean isplayer1;
+	private boolean isPlayer1;
 	private Integer n;
-	private Double diameter_piece;
+	private Double diameterPiece;
 	private boolean strategiesDefined = false;
 	private Aggressive aggressive;
 	private ObstacleAvoidance obstacleAvoidance;
 	private ObstacleCreation obstacleCreation;
+	private HashMap<Integer, Point> playerPieces;
+	private HashMap<Integer, Point> opponentPieces;
 
+	/**
+	 * Player constructor
+	 */
 	public Player()
 	{
-		random = new Random(seed);
+		random = new Random();
 	}
 
 	// Initialization function.
 	// pieces: Location of the pieces for the player.
 	// n: Number of pieces available.
 	// t: Total turns available.
-	public void init(HashMap<Integer, Point> pieces, int n, double t, boolean isplayer1, double diameter_piece)
+	/**
+	 * 
+	 */
+	public void init(HashMap<Integer, Point> pieces, int n, double t, boolean isPlayer1, double diameterPiece)
 	{
 		this.n = n;
-		this.isplayer1 = isplayer1;
-		this.diameter_piece = diameter_piece;
+		this.isPlayer1 = isPlayer1;
+		this.diameterPiece = diameterPiece;
 	}
 
-	// TODO: Need to modify this code - see Overleaf document to determine how to choose a certain approach
-	public List<Pair<Integer, Point>> getMoves(Integer num_moves, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, boolean isplayer1) {
+	/**
+	 * Get moves for Player
+	 * numMoves: Total number of moves
+	 * playerPieces: Player pieces
+	 * opponentPieces: Opponent pieces
+	 * isPlayer1: Flag to check if player is player one
+	 */
+	public List<Pair<Integer, Point>> getMoves(Integer numMoves, HashMap<Integer, Point> playerPieces, HashMap<Integer, Point> opponentPieces, boolean isPlayer1) {
 
-		List<Pair<Integer, Point>> moves = new ArrayList<>();
-		HashMap<Integer, Point> duplicate_player_pieces = (HashMap<Integer, Point>) player_pieces.clone();
+		this.playerPieces = playerPieces;
+		this.opponentPieces = opponentPieces;	
 		
-	
+		List<Pair<Integer, Point>> moves = new ArrayList<>();		
+			
 		if(!strategiesDefined) {
-			aggressive = new Aggressive(duplicate_player_pieces, opponent_pieces, isplayer1, n, diameter_piece);
-			obstacleAvoidance = new ObstacleAvoidance(duplicate_player_pieces, opponent_pieces, isplayer1, n, diameter_piece);
-			obstacleCreation = new ObstacleCreation(duplicate_player_pieces, opponent_pieces, isplayer1, n, diameter_piece);
-			strategiesDefined = true;
+			aggressive = new Aggressive(playerPieces, opponentPieces, isPlayer1, n, diameterPiece);
+			obstacleAvoidance = new ObstacleAvoidance(playerPieces, opponentPieces, isPlayer1, n, diameterPiece);
+			obstacleCreation = new ObstacleCreation(playerPieces, opponentPieces, isPlayer1, n, diameterPiece);
+			this.strategiesDefined = true;
 		}
 		else {
-			aggressive.updatePieceInfo(duplicate_player_pieces, opponent_pieces);
-			obstacleAvoidance.updatePieceInfo(duplicate_player_pieces, opponent_pieces);
-			obstacleCreation.updatePieceInfo(duplicate_player_pieces, opponent_pieces);
+			aggressive.updatePieceInfo(playerPieces, opponentPieces);
+			obstacleAvoidance.updatePieceInfo(playerPieces, opponentPieces);
+			obstacleCreation.updatePieceInfo(playerPieces, opponentPieces);
 		}
 
-		for(int i = 0; i < num_moves; i++) {			
-			double randomValue = Math.random();		
-
-			if(n <= 11) {
+		for(int i = 0; i < numMoves; i++) {
+			if(n <= 15) {
 				moves.add(aggressive.getMove());
 			}
 			else if(n > 11) {
+				if(aggressive.RUNNER_STRATEGY_SET) {
+					Pair<Integer, Point> possMove = aggressive.run(numMoves, i % 2 == 0);
+					if(possMove != null) {
+						moves.add(possMove);
+						continue;
+					}
+				}
+				HashMap<Integer, Point> aggressivePlayerPieces = aggressive.getPlayerPieces();
+				aggressivePlayerPieces.remove(aggressive.getHighPieceID());
+				aggressivePlayerPieces.remove(aggressive.getLowPieceID());
+				aggressive.setPlayerPieces(aggressivePlayerPieces);
+				if(playerPieces.containsKey(aggressive.getHighPieceID()))
+					playerPieces.remove(aggressive.getHighPieceID());
+				if(playerPieces.containsKey(aggressive.getLowPieceID()))
+					playerPieces.remove(aggressive.getLowPieceID());
+				Pair<Integer, Point> possMove = aggressive.getMove();
+				if(possMove != null) {
+					moves.add(possMove);
+					continue;
+				}
+				HashMap<Integer, Point> obstacleCreationPlayerPieces = obstacleCreation.getPlayerPieces();
+				obstacleCreationPlayerPieces.remove(aggressive.getHighPieceID());
+				obstacleCreationPlayerPieces.remove(aggressive.getLowPieceID());
+				obstacleCreation.setPlayerPieces(obstacleCreationPlayerPieces);
+				if(i == 0) {
+					List<Pair<Integer, Point>> possMoves = obstacleCreation.doubleWallSwap();
+					if(possMoves != null) {
+						moves.addAll(possMoves);
+						return moves;
+					}						
+				}
 				moves.add(obstacleCreation.getMove());
 			}
-			else if(i == 0) {
-//				System.out.println("Move 1");
-				if(randomValue <= THRESHOLD) {
-					if(aggressive.isPossible())
-						moves.add(aggressive.getMove());
-					else if(obstacleAvoidance.isPossible())
-						moves.add(obstacleAvoidance.getMove());
-					else if(obstacleCreation.isPossible()) {
-//						System.out.println("1");
-						moves.add(obstacleCreation.getMove());
-					}
-					/* TODO: add cases where behavior for coins need to change when 
-					 * none of the above cases apply - can implement within 
-					 * individual class files. This is a "hybrid" move.
-					 */
-				}
-				else {
-					if(obstacleAvoidance.isPossible())
-						moves.add(obstacleAvoidance.getMove());
-					else if(aggressive.isPossible())
-						moves.add(aggressive.getMove());
-					else if(obstacleCreation.isPossible()) {
-//						System.out.println("2");
-						moves.add(obstacleCreation.getMove());
-					}
-					/* TODO: add cases where behavior for coins need to change when 
-					 * none of the above cases apply - can implement within 
-					 * individual class files. This is a "hybrid" move.
-					 */
-				}
-			}
-			else {
-//				System.out.println("Move 2" + randomValue);
-				if(randomValue <= THRESHOLD) {
-					if(obstacleCreation.isPossible())
-						moves.add(obstacleCreation.getMove());
-					else if(aggressive.isPossible())
-						moves.add(aggressive.getMove());
-					else if(obstacleAvoidance.isPossible())
-						moves.add(obstacleAvoidance.getMove());
-					/* TODO: add cases where behavior for coins need to change when 
-					 * none of the above cases apply - can implement within 
-					 * individual class files. This is a "hybrid" move.
-					 */
-				}
-				else {
-					if(obstacleAvoidance.isPossible())
-						moves.add(obstacleAvoidance.getMove());
-					else if(aggressive.isPossible())
-						moves.add(aggressive.getMove());
-					else if(obstacleCreation.isPossible()) {
-//						System.out.println("4");
-						moves.add(obstacleCreation.getMove());
-					}
-					/* TODO: add cases where behavior for coins need to change when 
-					 * none of the above cases apply - can implement within 
-					 * individual class files. This is a "hybrid" move.
-					 */
-				}
-			}
 		}
-		
-//		System.out.println(moves.get(0).getKey() + " " + moves.get(0).getValue());
-//		System.out.println(moves.get(1).getKey() + " " + moves.get(1).getValue());
-		
+						
 		return moves;
+	}
+	
+	public int getSeed() {
+		return seed;
+	}
+
+	public void setSeed(int seed) {
+		this.seed = seed;
+	}
+
+	public Random getRandom() {
+		return random;
+	}
+
+	public void setRandom(Random random) {
+		this.random = random;
+	}
+
+	public boolean isPlayer1() {
+		return isPlayer1;
+	}
+
+	public void setPlayer1(boolean isPlayer1) {
+		this.isPlayer1 = isPlayer1;
+	}
+
+	public Integer getN() {
+		return n;
+	}
+
+	public void setN(Integer n) {
+		this.n = n;
+	}
+
+	public Double getDiameterPiece() {
+		return diameterPiece;
+	}
+
+	public void setDiameterPiece(Double diameterPiece) {
+		this.diameterPiece = diameterPiece;
+	}
+
+	public boolean isStrategiesDefined() {
+		return strategiesDefined;
+	}
+
+	public void setStrategiesDefined(boolean strategiesDefined) {
+		this.strategiesDefined = strategiesDefined;
+	}
+
+	public Aggressive getAggressive() {
+		return aggressive;
+	}
+
+	public void setAggressive(Aggressive aggressive) {
+		this.aggressive = aggressive;
+	}
+
+	public ObstacleAvoidance getObstacleAvoidance() {
+		return obstacleAvoidance;
+	}
+
+	public void setObstacleAvoidance(ObstacleAvoidance obstacleAvoidance) {
+		this.obstacleAvoidance = obstacleAvoidance;
+	}
+
+	public ObstacleCreation getObstacleCreation() {
+		return obstacleCreation;
+	}
+
+	public void setObstacleCreation(ObstacleCreation obstacleCreation) {
+		this.obstacleCreation = obstacleCreation;
+	}
+
+	public static double getThreshold() {
+		return THRESHOLD;
+	}
+		
+	public HashMap<Integer, Point> getPlayerPieces() {
+		return playerPieces;
+	}
+
+	public HashMap<Integer, Point> getOpponentPieces() {
+		return opponentPieces;
 	}
 }
