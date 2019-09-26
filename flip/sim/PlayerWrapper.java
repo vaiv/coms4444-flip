@@ -68,7 +68,7 @@ public class PlayerWrapper {
         
     }
     // Gets the moves from the player. Number of moves is specified by first parameter.
-    public List<Pair<Integer, Point>> getMoves(Integer num_moves, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, boolean isplayer1) 
+    public List<Pair<Integer, Point>> getMoves(Integer num_moves, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, boolean isplayer1) throws Exception
     {
         Log.record("Getting moves for player " + this.name);
         List<Pair<Integer, Point>> moves = new ArrayList<Pair<Integer, Point>>();
@@ -91,7 +91,8 @@ public class PlayerWrapper {
         catch (Exception ex) 
         {
             Log.record("Player " + this.name + " has possibly timed out.");
-            // throw ex;
+            Log.record("Player " + this.name + " "+ ex);
+	    throw ex;
         }       
 
         return moves;

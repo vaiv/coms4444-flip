@@ -62,13 +62,13 @@ public class Player implements flip.sim.Player {
     wallBuilt = false;
     wallMode = numPieces > 12;
     wallMover = -1;
-    
+
     wallX = isPlayerOne ? 20.0 : -20.0;
     idealWallLocations = new ArrayList<>();
     for(int i=0; i < 11; i++){
         this.idealWallLocations.add(new Point(wallX, 2*i*Math.sqrt(3) + Math.sqrt(3) - 19));
       }
-    
+
 
   }
 
@@ -77,8 +77,11 @@ public class Player implements flip.sim.Player {
     //Integer closest_piece = findPreferredPiece(playerPieces);
     //Point current = playerPieces.get(closest_piece);
     //return moveToTarget(closest_piece, new Point(goal_X,current.y), playerPieces, opponentPieces);
-    
+
     ArrayList<Pair<Integer, Point>> moves = new ArrayList<>();
+
+    if(numPieces > 12 && idealWallLocations.size() == 0)
+      return null;
 
     for(int i=0; i<numMoves; i++)
     {
@@ -88,7 +91,7 @@ public class Player implements flip.sim.Player {
 
       if(move==null) //check for no move returned - don't waste moves
         move = getRandomMove(playerPieces,opponentPieces, isPlayerOne);
-      
+
       allMoves.add(move);
 
       moves.add(move);
@@ -97,7 +100,6 @@ public class Player implements flip.sim.Player {
     }
     //add provision to fill up moves with random moves if size is less than num_Moves.
     System.out.println("Moves:"+moves);
-
 
 
     return moves;
@@ -117,8 +119,8 @@ public class Player implements flip.sim.Player {
   }
 
   public Pair<Integer, Point> getPrelimMove( HashMap<Integer, Point> playerPieces, HashMap<Integer, Point> opponentPieces, boolean isPlayerOne)
-{ 
- 
+{
+
         HashMap<Integer, Point> eligiblePieces = removeActionPieces(removeEndzonePieces(playerPieces));
         if(eligiblePieces.size()==0)
         {
@@ -153,16 +155,47 @@ public class Player implements flip.sim.Player {
             //eligiblePieces.remove(piece);
           }
         }
-      
+
 
       return null;
 
 
 }
 
+public Point getPreferredWallLocation(HashMap<Integer, Point> opponentPieces){
+  Point mostThreatened = idealWallLocations.get(0);
+  double mostThreatenedDist = Double.POSITIVE_INFINITY;
+  for(Point wallPoint : idealWallLocations){
+    for(Map.Entry<Integer, Point> e: opponentPieces.entrySet()){
+      if(Board.getdist(wallPoint, e.getValue()) < mostThreatenedDist){
+        mostThreatened = wallPoint;
+        mostThreatenedDist = Board.getdist(wallPoint, e.getValue());
+      }
+    }
+  }
+  return mostThreatened;
+}
+
+
 public Pair<Integer, Point> getWallMove( HashMap<Integer, Point> playerPieces, HashMap<Integer, Point> opponentPieces, boolean isPlayerOne)
 {
-    Point wallPoint = idealWallLocations.get(0);
+    if(idealWallLocations.size() == 1 && (wallMover != -1)){
+      if(Board.getdist(idealWallLocations.get(0), playerPieces.get(wallMover)) < 0.05){
+        idealWallLocations.remove(0);
+        System.out.println("out");
+        return null;
+      }
+      if(Board.getdist(idealWallLocations.get(0), playerPieces.get(wallMover)) > 2.0 - 0.00007 && Board.getdist(idealWallLocations.get(0), playerPieces.get(wallMover)) < 2.0 + 0.00007 )
+      {
+        Point validPos = getValidPosition(wallMover, idealWallLocations.get(0), playerPieces, opponentPieces);
+        if(checkValidity(new Pair(wallMover, validPos), playerPieces, opponentPieces)){
+          System.out.println("YA");
+        }
+        return new Pair(wallMover, validPos);
+      }
+    }
+
+    Point wallPoint = getPreferredWallLocation(opponentPieces);//idealWallLocations.get(0);
     if(wallMover < 0){
       double minDist = Double.POSITIVE_INFINITY;
       for(Map.Entry<Integer, Point> e : playerPieces.entrySet()){
@@ -174,28 +207,81 @@ public Pair<Integer, Point> getWallMove( HashMap<Integer, Point> playerPieces, H
         }
       }
     }
-    Pair<Integer, Point> wallMove = getNextWallMove(wallMover , playerPieces.get(wallMover), wallPoint, playerPieces, opponentPieces);
+    Pair<Integer, Point> wallMove = getNextMove(playerPieces.get(wallMover), wallPoint, wallMover, playerPieces, opponentPieces);
     if(wallMove != null){
-      if(Board.getdist(wallMove.getValue() , wallPoint) < 0.1){
-        System.out.println("Reached Wall Pos");
-        idealWallLocations.remove(0);
+      if(Board.getdist(wallMove.getValue() , wallPoint) < 0.001){
+        idealWallLocations.remove(wallPoint);
         wall.add(wallMover);
         wallMover = -1;
         if(idealWallLocations.size() == 0){
           wallMode = false;
         }
       }
+      System.out.println(wallMove);
       return wallMove;
     }
     return null;
 
   }
 
-  
+  public Pair<Integer, Point> getNextMove(Point a, Point b,
+                                          Integer pieceID,
+                                          HashMap<Integer, Point> playerPieces,
+                                          HashMap<Integer, Point> opponentPieces){
+
+    Pair<Integer, Point> move;
+    double dist = Board.getdist(a, b);
+
+    if (Board.almostEqual(dist, 0))
+      return null;
+
+    else if (Board.almostEqual(dist, 2)){
+      move = new Pair<Integer, Point>(pieceID, b);
+      if(checkValidity(move, playerPieces, opponentPieces)) {
+        return move;
+      }
+      else
+        return new Pair(pieceID, getValidPosition(pieceID, b, playerPieces, opponentPieces));
+    }
+
+    else if (dist < 4) {
+      double x1 = 0.5 * (b.x + a.x);
+      double y1 = 0.5 * (b.y + a.y);
+
+      double sqrt_const = Math.sqrt(16/(dist*dist)-1) / 2;
+      double x2 = sqrt_const * (b.y - a.y);
+      double y2 = sqrt_const * (a.x - b.x);
+
+      move = new Pair<Integer, Point>(pieceID, new Point(x1+x2, y1+y2));
+      if(checkValidity(move, playerPieces, opponentPieces)){
+        return move;
+      }
+
+      move = new Pair<Integer, Point>(pieceID, new Point(x1-x2, y1-y2));
+      if(checkValidity(move, playerPieces, opponentPieces)){
+        return move;
+      }
+      return new Pair(pieceID, getValidPosition(pieceID, b, playerPieces, opponentPieces));
+    }
+
+    else{
+      move = new Pair<Integer, Point>(pieceID,  new Point(
+              a.x + 2 * (b.x - a.x) / dist,
+              a.y + 2 * (b.y - a.y) / dist
+      ));
+
+      if(checkValidity(move, playerPieces, opponentPieces))
+        return move;
+
+      return new Pair(pieceID, getValidPosition(pieceID, b, playerPieces, opponentPieces));
+    }
+  }
+
+
   public Pair<Integer, Point> getRegMove( HashMap<Integer, Point> playerPieces, HashMap<Integer, Point> opponentPieces, boolean isPlayerOne)
   {
       //HashMap<Integer, Point> eligiblePieces = removeEndzonePieces(playerPieces);
-      
+
         Integer piece = findIdealRegPiece(playerPieces, opponentPieces, isPlayerOne);
         Point idealPoint = new Point(playerPieces.get(piece).x + playerMultiplier*pieceDiameter,playerPieces.get(piece).y);
         Pair<Integer,Point> idealMove = new Pair(piece, idealPoint);
@@ -224,7 +310,7 @@ public Pair<Integer, Point> getWallMove( HashMap<Integer, Point> playerPieces, H
             //eligiblePieces.remove(piece);
           }
         }
-      
+
 
       return null;
   }
@@ -275,13 +361,13 @@ public Pair<Integer,Point> getActionMove(Integer actionPiece, HashMap<Integer, P
 
   public Pair<Integer, Point> getRandomMove( HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, boolean isplayer1)
   {
-    
+
 
     player_pieces = removeEndzonePieces(player_pieces);
 
      while(true)
      {
-      Integer piece_id = random.nextInt(player_pieces.size());
+      Integer piece_id = findFurthestPiece(player_pieces);
       Point curr_position = player_pieces.get(piece_id);
       Point new_position = new Point(curr_position);
 
@@ -304,7 +390,7 @@ public Pair<Integer,Point> getActionMove(Integer actionPiece, HashMap<Integer, P
       if(checkValidity(move, player_pieces, opponent_pieces))
         return move;
      }
-     
+
   }
 
 
@@ -312,22 +398,15 @@ public Pair<Integer,Point> getActionMove(Integer actionPiece, HashMap<Integer, P
 {
   Pair<Integer, Point> last_move = allMoves.get(allMoves.size()-1);
   Pair<Integer, Point> second_move = allMoves.get(allMoves.size()-2);
-
   if(move.getKey() == last_move.getKey() && move.getKey()==second_move.getKey())
   {
       if(Board.getdist(move.getValue(),last_move.getValue())<0.3 && Board.getdist(last_move.getValue(),second_move.getValue())<0.3 )
         {
           System.out.println("Piece was stuck");
-
           return true;
         }
-
-
   }
-
   return false;
-
-
 }*/
 
   public Integer findIdealRegPiece( HashMap<Integer, Point> playerPieces, HashMap<Integer, Point> opponentPieces, boolean isPlayerOne)
@@ -336,7 +415,6 @@ public Pair<Integer,Point> getActionMove(Integer actionPiece, HashMap<Integer, P
     //maybe remove all pieces behind a wall if detected
 
     /*if(!allAcross) //find termination clause
-
     {
       eligiblePieces = removeCrossedPieces(eligiblePieces);
       if(eligiblePieces.size()==0)
@@ -445,7 +523,7 @@ public Pair<Integer,Point> getActionMove(Integer actionPiece, HashMap<Integer, P
 
   public Integer findIdealPrelimPiece( HashMap<Integer, Point> eligiblePieces,HashMap<Integer, Point> playerPieces, HashMap<Integer, Point> opponentPieces, boolean isPlayerOne)
   {
-    
+
 
     HashMap<Integer, Point> nearestObstacles = new HashMap<>();
     double initial_ob = isPlayerOne? Double.NEGATIVE_INFINITY: Double.POSITIVE_INFINITY;
