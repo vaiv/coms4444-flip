@@ -168,7 +168,7 @@ public class Simulator
                 Log.log("player 2 is" + player2.getName());
 
 
-                Board game = new Board(n_pieces, seed+round);
+                Board game = new Board(n_pieces, seed+(int)round/2);
 
                 Log.log("Board setup complete.");
 
